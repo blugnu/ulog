@@ -1,0 +1,6 @@
+github.com/blugnu/capture v0.1.0 h1:S1ZgPtzJIq0WEg38zrTGe1h+X4QC7IuXsq6JN+24Bu4=
+github.com/blugnu/capture v0.1.0/go.mod h1:blKUOxFIzjiOiaFQ2Q2rVlsEjW79q3m3pMeFPiNWlWY=
+github.com/blugnu/errorcontext v0.2.2 h1:TqFPGb0pdNWtACxvbLqqzD8fzZAoa2uXdjohgk8RRwU=
+github.com/blugnu/errorcontext v0.2.2/go.mod h1:4tMqaqNkRxLrL9d8EwWKZBbJMV+Zd8GLu+0Ih+QY3Ac=
+github.com/blugnu/test v0.2.0 h1:E3vtp3ZGRwBBEV9019WNjuXNEbWQo5USnHiE2kYel2k=
+github.com/blugnu/test v0.2.0/go.mod h1:ARB7gpFrlFWwfUnlCKFTpboO4J1pe2QbbaM3TWTGDq8=
