@@ -40,6 +40,14 @@ A highly configurable, structured logging library for Go that does not sacrifice
 go get github.com/blugnu/ulog
 ```
 
+## Tech Stack
+blugnu/ulog is built on the following main stack:
+
+- <img width='25' height='25' src='https://img.stackshare.io/service/1005/O6AczwfV_400x400.png' alt='Golang'/> [Golang](http://golang.org/) – Languages
+- <img width='25' height='25' src='https://img.stackshare.io/service/11563/actions.png' alt='GitHub Actions'/> [GitHub Actions](https://github.com/features/actions) – Continuous Integration
+
+Full tech stack [here](/techstack.md)
+
 ## Usage
 
 A minimal example of using `ulog` to produce a `logfmt` formatted message to `os.Stdout`:
@@ -48,8 +56,14 @@ A minimal example of using `ulog` to produce a `logfmt` formatted message to `os
 package main
 
 func main() {
+    ctx := context.Background()
+
     // create a new logger
-    logger := ulog.New()
+    logger, closelog, err := ulog.NewLogger(ctx)
+    if err != nil {
+      log.Fatalf("error initialising logger: %s", err)
+    }
+    defer closelog()
 
     // log a message
     logger.Info("hello world")
@@ -90,25 +104,26 @@ logger := ulog.New(ulog.LoggerLevel(ulog.DEBUG))
 
 The following formatters are supported:
 
-* `logfmt` - a simple, structured format that is easy for humans and machines to read and parse
-* `json` - a structured format that is easy for machines to parse
+* `logfmt` - a simple, structured format that is easy for both humans and machines to read and parse
+* `json` - a structured format that is easy for machines to parse but can be noisy for humans
+* `msgpack` - an efficient structured, binary format for machine use, unintelligible to humans
 
 The default formatter is `logfmt` but may be overridden using the `LoggerFormat` configuration function when configuring a new logger:
 
 ```go
-logger := ulog.New(ulog.LoggerFormat(ulog.NewJSONFormatter()))
+logger, closelog, err := ulog.NewLogger(ulog.LoggerFormat(ulog.NewJSONFormatter()))
 ```
 
-Formatters typically offer a number of configuration options that can be set via the configuration functions supplied to their `New` function.  For example, to configure the label used for the timestamp field in the `logfmt` formatter:
+Formatters offer a number of configuration options that can be set via functions supplied to their factory function.  For example, to configure the name used for the `time` field by a `logfmt` formatter:
 
 ```go
-logger := ulog.New(
-  ulog.LoggerFormat(
-    ulog.NewLogfmtFormatter(
-      ulog.SetTimestampLabel("ts"),
-      ),
-    ),
-  )
+	log, closelog, _ := ulog.NewLogger(ctx,
+		ulog.LoggerFormat(ulog.LogfmtFormatter(
+			ulog.LogfmtFieldNames(map[ulog.FieldId]string{
+				ulog.TimeField: "timestamp",
+			}),
+		)),
+	)
 ```
 
 ### Output
@@ -118,26 +133,19 @@ On a standard logger, the output may be written to any `io.Writer`.  The default
 The output may be configured  via the `LoggerOutput` configuration function when configuring a new logger:
 
 ```go
-logger := ulog.New(ulog.LoggerOutput(io.Stderr))
+logger, closefn, err := ulog.NewLogger(ctx, ulog.LoggerOutput(io.Stderr))
 ```
 
-Logs may be sent to _multiple_ outputs by using the `ulog.Mux` backend.  See the [examples](examples) directory for more details.
+Logs may be sent to _multiple_ destinations simultaneously using a `ulog.Mux`.  For example, full logs could be sent to an aggregator using `msgpack` format, while `logfmt` formatted logs at error level and above are also sent to `os.Stderr`.
+
+See the [examples](examples) directory for more details.
 
 ### Call-site logging
 
-If desired, the logger may be configured to emit the file name and line number of the call-site that generated the log message.  This is disabled by default.
+If desired, the logger may be configured to emit the file name and line number of the call-site that generated the log message.  This is _disabled_ by default.
 
 Call-site logging may be enabled via the `LogCallSite` configuration function when configuring a new logger:
 
 ```go
-logger := ulog.New(ulog.LogCallSite(true))
-```
-
-The labels used for call site logging may be configured via the `CallSiteLabels` configuration function when configuring a new logger:
-
-```go
-logger := ulog.New(ulog.CallSiteLabels(map[ulog.FieldLabel]string{
-  ulog.FileLabel: "file",
-  ulog.FunctionLabel: "line",
-}))
+logger, closelog, err := ulog.NewLogger(ctx, ulog.LogCallSite(true))
 ```
