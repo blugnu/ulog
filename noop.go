@@ -1,6 +1,8 @@
 package ulog
 
-import "context"
+import (
+	"context"
+)
 
 // noopimpl is a no-op level logger.  All receiver methods are nil-safe no-ops
 // (ore return references to nil-safe no-ops) so there is no need to actually
@@ -21,7 +23,7 @@ func (*noopimpl) Close() { /* NO-OP */ }
 
 // nooplogger is a no-op logger.  All receiver methods are nil-safe no-ops (or
 // return a reference to a nil-safe no-op)
-type nooplogger struct{}
+type nooplogger struct{ exitCode int }
 
 func (*nooplogger) Trace(string)          { /* NO-OP */ }
 func (*nooplogger) Tracef(string, ...any) { /* NO-OP */ }
@@ -35,15 +37,16 @@ func (*nooplogger) Error(any)             { /* NO-OP */ }
 func (*nooplogger) Errorf(string, ...any) { /* NO-OP */ }
 
 // nooplogger is the Nul() logger
-func (*nooplogger) Fatal(any) {
-	if ExitOnFatalLog == ExitAlways {
+func (logger *nooplogger) Fatal(any) {
+	switch {
+	case logger != nil:
+		exit(logger.exitCode)
+	default:
 		exit(1)
 	}
 }
-func (*nooplogger) Fatalf(string, ...any) {
-	if ExitOnFatalLog == ExitAlways {
-		exit(1)
-	}
+func (logger *nooplogger) Fatalf(string, ...any) {
+	logger.Fatal("")
 }
 
 func (*nooplogger) AtLevel(Level) LevelLogger          { return noop.levellogger }
@@ -51,6 +54,7 @@ func (*nooplogger) Log(Level, string)                  { /* NO-OP */ }
 func (*nooplogger) Logf(Level, string, ...any)         { /* NO-OP */ }
 func (*nooplogger) LogTo(string) Logger                { return noop.logger }
 func (*nooplogger) WithContext(context.Context) Logger { return noop.logger }
+func (*nooplogger) WithExitCode(n int) Logger          { return &nooplogger{n} }
 func (*nooplogger) WithField(string, any) Logger       { return noop.logger }
 func (*nooplogger) WithFields(map[string]any) Logger   { return noop.logger }
 func (*nooplogger) WithLevel(Level) Logger             { return noop.logger }

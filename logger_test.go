@@ -4,396 +4,288 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
-	"reflect"
 	"testing"
+
+	"github.com/blugnu/test"
 )
 
-func Test_New_whenConfigurationFails(t *testing.T) {
+func TestNewLogger(t *testing.T) {
 	// ARRANGE
-	ctx := context.Background()
-	cfgerr := errors.New("configuration error")
-	cfg := func(*logger) error { return cfgerr }
+	testcases := []struct {
+		scenario string
+		exec     func(t *testing.T)
+	}{
+		{scenario: "option error",
+			exec: func(t *testing.T) {
+				// ARRANGE
+				opterr := errors.New("option error")
+				opt := func(*logger) error { return opterr }
 
-	// ACT
-	lg, cfn, err := NewLogger(ctx, cfg)
+				// ACT
+				lg, cfn, err := NewLogger(context.Background(), opt)
 
-	// ASSERT
-	t.Run("returns error", func(t *testing.T) {
-		wanted := cfgerr
-		got := err
-		if !errors.Is(got, wanted) {
-			t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-		}
-	})
+				// ASSERT
+				test.That(t, lg).IsNil()
+				test.That(t, cfn).IsNotNil()
+				test.Error(t, err).Is(opterr)
 
-	t.Run("nil logger", func(t *testing.T) {
-		wanted := (Logger)(nil)
-		got := lg
-		if wanted != got {
-			t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-		}
-	})
+				t.Run("close func does not panic", func(t *testing.T) {
+					defer test.ExpectPanic(nil).Assert(t)
+					cfn()
+				})
+			},
+		},
+		{scenario: "no backend option",
+			exec: func(t *testing.T) {
+				// ACT
+				lg, cfn, err := NewLogger(context.Background())
 
-	t.Run("nil close function", func(t *testing.T) {
-		wanted := true
-		got := cfn == nil
-		if wanted != got {
-			t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-		}
-	})
-}
+				// ASSERT
+				test.That(t, lg).IsNotNil()
+				test.That(t, cfn).IsNotNil()
+				test.That(t, err).IsNil()
 
-func Test_New_withNoBackendConfigured(t *testing.T) {
-	// ARRANGE
-	ctx := context.Background()
+				if backend, ok := test.IsType[*stdioBackend](t, lg.(*logcontext).logger.backend); ok {
+					if formatter, ok := test.IsType[*logfmt](t, backend.Formatter); ok {
+						lf, _ := LogfmtFormatter()()
+						wanted := lf.(*logfmt)
+						test.That(t, formatter).Equals(wanted)
+					}
+					test.That(t, backend.Writer).Equals(any(os.Stdout).(io.Writer))
+				}
 
-	// ACT
-	lg, cfn, err := NewLogger(ctx)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+				t.Run("close func does not panic", func(t *testing.T) {
+					defer test.ExpectPanic(nil).Assert(t)
+					cfn()
+				})
+			},
+		},
+		{scenario: "backend that fails to start",
+			exec: func(t *testing.T) {
+				// ARRANGE
+				beerr := errors.New("backend error")
+				be := &mockbackend{
+					startfn: func() (func(), error) { return nil, beerr },
+				}
+
+				// ACT
+				lg, cfn, err := NewLogger(context.Background(), LoggerBackend(be))
+
+				// ASSERT
+				test.IsNil(t, lg, "logger")
+				test.IsNotNil(t, cfn, "close function")
+				test.Error(t, err).Is(beerr)
+
+				t.Run("close func does not panic", func(t *testing.T) {
+					defer test.ExpectPanic(nil).Assert(t)
+					cfn()
+				})
+			},
+		},
 	}
-
-	// ASSERT
-	t.Run("non-nil logger", func(t *testing.T) {
-		wanted := true
-		got := lg != nil
-		if wanted != got {
-			t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-		}
-	})
-
-	t.Run("non-nil close function", func(t *testing.T) {
-		wanted := true
-		got := cfn != nil
-		if wanted != got {
-			t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-		}
-	})
-
-	t.Run("configures default backend", func(t *testing.T) {
-		wanted := &stdio{}
-		got, ok := lg.(*logcontext).logger.backend.(*stdio)
-		if !ok {
-			t.Errorf("\nwanted %T\ngot    %T", wanted, got)
-		}
-
-		t.Run("with default Formatter", func(t *testing.T) {
-			wanted, _ := Logfmt()()
-			got := lg.(*logcontext).logger.backend.(*stdio).Formatter
-			if !reflect.DeepEqual(wanted, got) {
-				t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-			}
+	for _, tc := range testcases {
+		t.Run(tc.scenario, func(t *testing.T) {
+			tc.exec(t)
 		})
-
-		t.Run("using stdout", func(t *testing.T) {
-			wanted := os.Stdout
-			got := lg.(*logcontext).logger.backend.(*stdio).Writer
-			if wanted != got {
-				t.Errorf("\nwanted %v\ngot    %v", wanted, got)
-			}
-		})
-	})
-
-	t.Run("close function", func(t *testing.T) {
-		// ARRANGE/ASSERT
-		defer func() {
-			if r := recover(); r != nil {
-				t.Errorf("should not panic")
-			}
-		}()
-
-		// ACT
-		cfn()
-	})
-}
-
-func Test_New_withStartableBackendThatFailsToStart(t *testing.T) {
-	// ARRANGE
-	ctx := context.Background()
-
-	beerr := errors.New("backend error")
-	be := &mockbackend{
-		startfn: func() (func(), error) { return nil, beerr },
 	}
-
-	// ACT
-	lg, cfn, err := NewLogger(ctx, LoggerBackend(be))
-
-	// ASSERT
-	t.Run("returns error", func(t *testing.T) {
-		wanted := beerr
-		got := err
-		if !errors.Is(got, wanted) {
-			t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-		}
-	})
-
-	t.Run("nil logger", func(t *testing.T) {
-		wanted := (Logger)(nil)
-		got := lg
-		if wanted != got {
-			t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-		}
-	})
-
-	t.Run("nil close function", func(t *testing.T) {
-		wanted := true
-		got := cfn == nil
-		if wanted != got {
-			t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-		}
-	})
 }
 
-func Test_initLogger(t *testing.T) {
+func TestLogger(t *testing.T) {
 	// ARRANGE
 	ctx := context.Background()
-	cfgApplied := false
+	lg := &logger{}
 
-	// register an enrichment func to ensure coverage (we can't test function refs)
+	// register a no-op enrichment func to ensure coverage by exercising
+	// the re-assignment of the enrichment function ref
+	//
+	// TODO: replace enrichment function with an enrichment interface so that a more meaningful test can be written
 	og := enrichment
 	defer func() { enrichment = og }()
 	enrichment = []EnrichmentFunc{func(context.Context) map[string]any { return nil }}
 
-	cfg := func(*logger) error { cfgApplied = true; return nil }
-
-	// ACT
-	lg, ic, err := initLogger(ctx, cfg)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// ASSERT
-	t.Run("applies configuration functions", func(t *testing.T) {
-		wanted := true
-		got := cfgApplied
-		if wanted != got {
-			t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-		}
-	})
-
-	t.Run("sets default level", func(t *testing.T) {
-		wanted := InfoLevel
-		got := lg.Level
-		if wanted != got {
-			t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-		}
-	})
-
-	t.Run("returns initial context (no callsite info)", func(t *testing.T) {
-		wanted := &logcontext{
-			ctx:    ctx,
-			logger: lg,
-		}
-		got := ic
-		if !reflect.DeepEqual(wanted, got) {
-			t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-		}
-	})
-
-	t.Run("returns initial context (with callsite info)", func(t *testing.T) {
-		// ACT
-		lg, got, err := initLogger(ctx, func(lg *logger) error { lg.getCallsite = caller; return nil })
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-
-		// ASSERT
-		wanted := &logcontext{
-			ctx:    ctx,
-			logger: lg,
-		}
-		if !reflect.DeepEqual(wanted, got) {
-			t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-		}
-	})
-}
-
-func Test_initLogger_whenConfigurationFails(t *testing.T) {
-	// ARRANGE
-	ctx := context.Background()
-	cfgerr := errors.New("configuration error")
-	cfg := func(*logger) error { return cfgerr }
-
-	// ACT
-	lg, ic, err := initLogger(ctx, cfg)
-
-	// ASSERT
-	t.Run("returns error", func(t *testing.T) {
-		wanted := cfgerr
-		got := err
-		if !errors.Is(got, wanted) {
-			t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-		}
-	})
-
-	t.Run("nil logger", func(t *testing.T) {
-		wanted := (*logger)(nil)
-		got := lg
-		if wanted != got {
-			t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-		}
-	})
-
-	t.Run("nil initial context", func(t *testing.T) {
-		wanted := (*logcontext)(nil)
-		got := ic
-		if wanted != got {
-			t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-		}
-	})
-}
-
-func TestLogger_log(t *testing.T) {
-	// ARRANGE
-	wasDispatched := false
-
-	sut := &logger{
-		backend: &mockbackend{dispatchfn: func(e entry) { wasDispatched = true }},
-	}
-
-	t.Run("nil entry", func(t *testing.T) {
-		// ACT
-		sut.log(noop.entry)
-
-		// ASSERT
-		t.Run("is not dispatched", func(t *testing.T) {
-			wanted := true
-			got := !wasDispatched
-			if wanted != got {
-				t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-			}
-		})
-	})
-
-	t.Run("non-nil entry", func(t *testing.T) {
-		// ACT
-		sut.log(entry{
-			logcontext: &logcontext{
-				logger: sut,
-			},
-		})
-
-		// ASSERT
-		t.Run("is dispatched", func(t *testing.T) {
-			wanted := true
-			got := wasDispatched
-			if wanted != got {
-				t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-			}
-		})
-	})
-}
-
-func TestLogger_levelEnabled(t *testing.T) {
-	// ARRANGE
-	ctx := context.Background()
-	sut := &logger{}
-
-	// ACT
-	for _, ll := range Levels {
-		sut.Level = ll
-		for _, el := range Levels {
-			t.Run(fmt.Sprintf("logger: %s, entry: %s", ll, el), func(t *testing.T) {
+	testcases := []struct {
+		scenario string
+		exec     func(t *testing.T)
+	}{
+		// exit
+		{scenario: "exit",
+			exec: func(t *testing.T) {
 				// ARRANGE
-				sut.Level = ll
+				closeCalled := false
+				exitCalled := false
+				exitCode := 0
+
+				ogexit := ExitFn
+				defer func() { ExitFn = ogexit }()
+				ExitFn = func(i int) { exitCalled = true; exitCode = i }
+
+				ogclose := lg.closeFn
+				defer func() { lg.closeFn = ogclose }()
+				lg.closeFn = func() { closeCalled = true }
 
 				// ACT
-				got := sut.levelEnabled(ctx, el)
+				lg.exit(42)
 
 				// ASSERT
-				wanted := el <= ll
-				if wanted != got {
-					t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
+				test.IsTrue(t, closeCalled, "close func is called")
+				test.IsTrue(t, exitCalled, "exit func is called")
+				test.That(t, exitCode, "exit code").Equals(42)
+			},
+		},
+
+		// init tests
+		{scenario: "init/valid",
+			exec: func(t *testing.T) {
+				// ARRANGE
+				optApplied := false
+				opt := func(*logger) error { optApplied = true; return nil }
+
+				// ACT
+				ic, err := lg.init(ctx, opt)
+
+				// ASSERT
+				test.That(t, ic).IsNotNil()
+				test.That(t, err).IsNil()
+
+				test.IsTrue(t, optApplied, "options applied")
+
+				test.That(t, lg.Level, "default level").Equals(InfoLevel)
+				test.That(t, ic, "initial context").Equals(&logcontext{ctx: ctx, logger: lg, exitCode: 1})
+			},
+		},
+		{scenario: "init/option error",
+			exec: func(t *testing.T) {
+				// ARRANGE
+				opterr := errors.New("option error")
+				opt := func(*logger) error { return opterr }
+
+				// ACT
+				ic, err := lg.init(ctx, opt)
+
+				// ASSERT
+				test.That(t, ic).IsNil()
+				test.Error(t, err).Is(opterr)
+			},
+		},
+
+		// isLevelEnabled
+		{scenario: "isLevelEnabled",
+			exec: func(t *testing.T) {
+				// ARRANGE
+				og := lg.Level
+				defer func() { lg.Level = og }()
+
+				for _, lg.Level = range Levels {
+					for _, el := range Levels {
+						t.Run(fmt.Sprintf("logger@%s/entry@%s", lg.Level, el), func(t *testing.T) {
+							// ACT
+							got := lg.isLevelEnabled(ctx, el)
+
+							// ASSERT
+							test.That(t, got).Equals(el <= lg.Level)
+						})
+					}
 				}
-			})
-		}
+			},
+		},
+
+		// log tests
+		{scenario: "log",
+			exec: func(t *testing.T) {
+				// ARRANGE
+				isDispatched := false
+
+				og := lg.backend
+				defer func() { lg.backend = og }()
+				lg.backend = &mockbackend{dispatchfn: func(e entry) { isDispatched = true }}
+
+				testcases := []struct {
+					scenario string
+					exec     func(t *testing.T)
+				}{
+					{scenario: "noop entry",
+						exec: func(t *testing.T) {
+							// ACT
+							lg.log(noop.entry)
+
+							// ASSERT
+							test.IsFalse(t, isDispatched, "entry dispatched")
+						},
+					},
+					{scenario: "valid entry",
+						exec: func(t *testing.T) {
+							// ACT
+							lg.log(entry{
+								logcontext: &logcontext{logger: lg},
+							})
+
+							// ASSERT
+							test.IsTrue(t, isDispatched, "entry dispatched")
+						},
+					},
+				}
+				for _, tc := range testcases {
+					t.Run(tc.scenario, func(t *testing.T) {
+						tc.exec(t)
+					})
+				}
+			},
+		},
+
+		// noEnrichment
+		{scenario: "noEnrichment",
+			exec: func(t *testing.T) {
+				// ARRANGE
+				type key int
+				ctx := context.WithValue(ctx, key(1), "value")
+				logctx := &logcontext{
+					logger:     lg,
+					dispatcher: &mockdispatcher{},
+				}
+
+				// ACT
+				result := lg.noEnrichment(logctx, ctx)
+
+				// ASSERT
+				test.Value(t, result).DoesNotEqual(logctx, "new log context")
+				test.That(t, result.ctx, "ctx").Equals(ctx)
+				test.That(t, result.dispatcher, "dispatcher").Equals(logctx.dispatcher)
+				test.That(t, result.fields, "fields").IsNil()
+				test.That(t, result.xfields, "xfields").IsNil()
+			},
+		},
+
+		// withEnrichment
+		{scenario: "withEnrichment",
+			exec: func(t *testing.T) {
+				// ARRANGE
+				type key int
+				ctx := context.WithValue(ctx, key(1), "value")
+				logctx := &logcontext{
+					logger:     lg,
+					dispatcher: &mockdispatcher{},
+				}
+				og := enrichment
+				defer func() { enrichment = og }()
+				RegisterEnrichment(func(context.Context) map[string]any { return map[string]any{"key": "value"} })
+
+				// ACT
+				result := lg.withEnrichment(logctx, ctx)
+
+				// ASSERT
+				test.Value(t, result).DoesNotEqual(logctx, "new log context")
+				test.That(t, result.ctx, "ctx").Equals(ctx)
+				test.That(t, result.dispatcher, "dispatcher").Equals(logctx.dispatcher)
+				test.That(t, result.fields, "fields").IsNil()
+				test.That(t, result.xfields, "xfields").Equals(map[string]any{"key": "value"})
+			},
+		},
 	}
-}
-
-func TestLogger_noEnrichment(t *testing.T) {
-	// ARRANGE
-	type key int
-
-	ctx := context.Background()
-	newctx := context.WithValue(ctx, key(1), 0)
-	logctx := &logcontext{
-		dispatcher: &mockdispatcher{},
+	for _, tc := range testcases {
+		t.Run(tc.scenario, func(t *testing.T) {
+			tc.exec(t)
+		})
 	}
-	sut := &logger{getCallsite: noCaller}
-	logctx.logger = sut
-
-	// ACT
-	got := sut.noEnrichment(logctx, newctx)
-
-	// ASSERT
-	t.Run("assigns context", func(t *testing.T) {
-		wanted := newctx
-		got := got.ctx
-		if wanted != got {
-			t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-		}
-	})
-
-	t.Run("assigns dispatcher", func(t *testing.T) {
-		wanted := logctx.dispatcher
-		got := got.dispatcher
-		if wanted != got {
-			t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-		}
-	})
-
-	t.Run("context fields", func(t *testing.T) {
-		wanted := 0
-		got := len(got.xfields)
-		if wanted != got {
-			t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-		}
-	})
-}
-
-func TestLogger_withEnrichment(t *testing.T) {
-	// ARRANGE
-	type key int
-
-	ctx := context.Background()
-	newctx := context.WithValue(ctx, key(1), 0)
-	logctx := &logcontext{
-		dispatcher: &mockdispatcher{},
-	}
-	sut := &logger{getCallsite: noCaller}
-	logctx.logger = sut
-
-	og := enrichment
-	defer func() { enrichment = og }()
-	RegisterEnrichment(func(context.Context) map[string]any { return map[string]any{"key": "value"} })
-
-	// ACT
-	got := sut.withEnrichment(logctx, newctx)
-
-	// ASSERT
-	t.Run("assigns context", func(t *testing.T) {
-		wanted := newctx
-		got := got.ctx
-		if wanted != got {
-			t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-		}
-	})
-
-	t.Run("assigns dispatcher", func(t *testing.T) {
-		wanted := logctx.dispatcher
-		got := got.dispatcher
-		if wanted != got {
-			t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-		}
-	})
-
-	t.Run("context fields", func(t *testing.T) {
-		wanted := map[string]any{"key": "value"}
-		got := got.xfields
-		if !reflect.DeepEqual(wanted, got) {
-			t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-		}
-	})
 }

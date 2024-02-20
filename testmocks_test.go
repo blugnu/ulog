@@ -13,11 +13,11 @@ func (b *mockbackend) dispatch(e entry) {
 	b.dispatchfn(e)
 }
 
-func (b *mockbackend) setFormatter(f Formatter) error {
+func (b *mockbackend) SetFormatter(f Formatter) error {
 	return b.setformatfn(f)
 }
 
-func (b *mockbackend) setOutput(w io.Writer) error {
+func (b *mockbackend) SetOutput(w io.Writer) error {
 	return b.setoutputfn(w)
 }
 
@@ -25,20 +25,30 @@ func (b *mockbackend) start() (func(), error) {
 	return b.startfn()
 }
 
-// type mockBatchHandler struct {
-// 	sent   int
-// 	sendfn func(*Batch) (int, error)
-// }
+type mockBatchHandler struct {
+	sendCalls   int
+	sentEntries int
+	sentBytes   int
+	sendfn      func(*Batch) error
+}
 
-// func (m *mockBatchHandler) configure(key cfgkey, value any) error { return nil }
-// func (m *mockBatchHandler) send(batch *Batch) (int, error) {
-// 	if m.sendfn != nil {
-// 		return m.sendfn(batch)
-// 	}
-// 	m.sent += batch.len
-// 	return 0, nil
-// }
-// func (m *mockBatchHandler) reset() { m.sent = 0 }
+func (m *mockBatchHandler) configure(key cfgkey, value any) error { return nil }
+func (m *mockBatchHandler) send(batch *Batch) error {
+	m.sendCalls++
+
+	fn := func(*Batch) error { return nil }
+	if m.sendfn != nil {
+		fn = m.sendfn
+	}
+
+	if err := fn(batch); err != nil {
+		return err
+	}
+	m.sentEntries += batch.len
+	m.sentBytes += batch.size
+	return nil
+}
+func (m *mockBatchHandler) reset() { m.sentBytes = 0; m.sentEntries = 0; m.sendCalls = 0 }
 
 type mocktransport struct {
 	logWasCalled  bool
@@ -74,28 +84,6 @@ func (m *mockmutex) Unlock() {
 func (m *mockmutex) Reset() {
 	m.lockWasCalled = false
 	m.unlockWasCalled = false
-}
-
-type mockpool[T any] struct {
-	getWasCalled bool
-	putWasCalled bool
-}
-
-func (mock *mockpool[T]) Get() any {
-	mock.getWasCalled = true
-	return new(T)
-}
-
-func (mock *mockpool[T]) Put(any) {
-	mock.putWasCalled = true
-}
-
-func (mock *mockpool[T]) GetWasCalled() bool {
-	return mock.getWasCalled
-}
-
-func (mock *mockpool[T]) PutWasCalled() bool {
-	return mock.putWasCalled
 }
 
 type mockformatter struct {

@@ -1,4 +1,4 @@
-package ulog
+package examples
 
 import (
 	"context"
@@ -9,6 +9,34 @@ import (
 
 	"github.com/blugnu/ulog"
 )
+
+func TestStdioConfiguration(t *testing.T) {
+	logger, closelog, _ := ulog.NewLogger(
+		context.Background(),
+		ulog.LogCallsite(true),
+		ulog.LoggerLevel(ulog.InfoLevel),
+		ulog.LoggerOutput(os.Stdout),
+		ulog.LoggerFormat(ulog.LogfmtFormatter()),
+	)
+	defer closelog()
+
+	info := logger.AtLevel(ulog.InfoLevel)
+	info.WithFields(map[string]any{"key": "value"}).Log("this should not be logged")
+
+	logger.Infof("this should %s be logged", "not")
+	logger.Trace("this should not be logged")
+	logger.Error("this should be logged")
+
+	t.Run("with fields", func(t *testing.T) {
+		logger := logger.WithFields(map[string]any{
+			"key1": "value1",
+			"key2": 42,
+		})
+
+		logger.Info("info with fields")
+		logger.Debug("debug with fields")
+	})
+}
 
 func TestDisabled(t *testing.T) {
 	logger, closelog, _ := ulog.NewLogger(
@@ -62,9 +90,9 @@ func TestLogfmt(t *testing.T) {
 	logger, closelog, _ := ulog.NewLogger(
 		context.Background(),
 		ulog.LoggerLevel(ulog.DebugLevel),
-		ulog.LoggerFormat(ulog.Logfmt(
-			ulog.LogfmtLevels(map[ulog.Level]string{
-				ulog.InfoLevel: "FYI  ",
+		ulog.LoggerFormat(ulog.LogfmtFormatter(
+			ulog.LogfmtLevelLabels(map[ulog.Level]string{
+				ulog.InfoLevel: "FYI",
 			}),
 		)),
 	)
@@ -97,20 +125,17 @@ func TestStress(t *testing.T) {
 }
 
 func TestSimpleMux(t *testing.T) {
-	logger, cfn, err := ulog.NewLogger(
+	logger, cfn, _ := ulog.NewLogger(
 		context.Background(),
 		ulog.Mux(
-			ulog.Target(
+			ulog.MuxTarget(
 				ulog.TargetLevel(ulog.InfoLevel),
-				ulog.TargetFormat(ulog.Logfmt()),
-				ulog.TargetTransport(ulog.StdioTransport()),
+				ulog.TargetFormat(ulog.LogfmtFormatter()),
+				ulog.TargetTransport(ulog.StdioTransport(os.Stdout)),
 			),
 		),
 	)
 	defer cfn()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
 
 	logger.Info("this should be logged")
 }
@@ -119,18 +144,66 @@ func TestMux(t *testing.T) {
 	logger, closelog, _ := ulog.NewLogger(
 		context.Background(),
 		ulog.Mux(
-			ulog.Format("logfmt", ulog.Logfmt()),
-			ulog.Target(
+			ulog.MuxFormat("logfmt", ulog.LogfmtFormatter()),
+			ulog.MuxTarget(
 				ulog.TargetLevel(ulog.InfoLevel),
 				ulog.TargetFormat("logfmt"),
-				ulog.TargetTransport(ulog.StdioTransport()),
+				ulog.TargetTransport(
+					ulog.StdioTransport(os.Stdout),
+				),
 			),
-			ulog.Target(
+			ulog.MuxTarget(
 				ulog.TargetLevel(ulog.ErrorLevel),
 				ulog.TargetFormat("logfmt"),
-				ulog.TargetTransport(ulog.StdioTransport(
-					ulog.StdioOutput(os.Stderr),
-				)),
+				ulog.TargetTransport(
+					ulog.StdioTransport(os.Stderr),
+				),
+			),
+		),
+	)
+	defer closelog()
+
+	logger.Info("-- new run ---------------------------------------------")
+	logger.Info("test log message, info level")
+	logger.Error("test log message, error level")
+
+	for i := 1; i <= 10; i++ {
+		logger.Infof(fmt.Sprintf("this is muxed test log #%d", i))
+	}
+
+	logger = logger.WithFields(map[string]any{
+		"key": "value",
+	})
+	logger.Info("this message should have a field")
+}
+
+func TestLogtailMux(t *testing.T) {
+	ulog.EnableTrace()
+	logger, closelog, _ := ulog.NewLogger(
+		context.Background(),
+		ulog.Mux(
+			ulog.MuxFormat("logfmt", ulog.LogfmtFormatter()),
+			ulog.MuxTarget(
+				ulog.TargetLevel(ulog.InfoLevel),
+				ulog.TargetFormat("logfmt"),
+				ulog.TargetTransport(
+					ulog.StdioTransport(os.Stdout),
+				),
+			),
+			ulog.MuxTarget(
+				ulog.TargetLevel(ulog.InfoLevel),
+				ulog.TargetFormat(
+					ulog.MsgpackFormatter(
+						ulog.MsgpackKeys(map[ulog.FieldId]string{
+							ulog.TimeField: "dt",
+						}),
+					),
+				),
+				ulog.TargetTransport(
+					ulog.LogtailTransport(
+						ulog.LogtailSourceToken("logtail.token"),
+					),
+				),
 			),
 		),
 	)

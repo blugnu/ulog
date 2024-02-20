@@ -2,9 +2,41 @@ package ulog
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 )
+
+// MuxOption is a configuration function for a mux backend.
+type MuxOption = func(*mux) error
+
+// Mux configures a backend to dispatch log messages to multiple targets.
+//
+// The Mux factory accepts a slice of configuration functions.
+func Mux(opts ...MuxOption) LoggerOption {
+	return func(l *logger) error {
+		mx := &mux{}
+		mx.init()
+
+		errs := []error{}
+		for _, opt := range opts {
+			errs = append(errs, opt(mx))
+		}
+		if err := errors.Join(errs...); err != nil {
+			return err
+		}
+
+		// initialise the list of targets for each level
+		for _, t := range mx.targets {
+			for _, lv := range Levels {
+				if lv <= t.Level {
+					mx.levelTargets[lv] = append(mx.levelTargets[lv], t)
+				}
+			}
+		}
+
+		l.backend = mx
+		return nil
+	}
+}
 
 // formatref is a reference to a Formatter.  A formatref is created when a
 // Format is introduced into a mux, either by using the Format() mux option
@@ -45,45 +77,11 @@ type mux struct {
 }
 
 // initMux initialises a mux.
-func initMux() *mux {
-	return &mux{
-		ch:           make(chan entry, 100),
-		formats:      map[string]*formatref{},
-		targets:      []*target{},
-		levelTargets: [numLevels][]*target{},
-	}
-}
-
-// MuxOption is a configuration function for a mux backend.
-type MuxOption = func(*mux) error
-
-// Mux configures a backend to dispatch log messages to multiple targets.
-//
-// The Mux factory accepts a slice of configuration functions.
-func Mux(cfg ...MuxOption) LoggerOption {
-	return func(l *logger) error {
-		mx := initMux()
-
-		errs := []error{}
-		for _, cfg := range cfg {
-			errs = append(errs, cfg(mx))
-		}
-		if err := errors.Join(errs...); err != nil {
-			return err
-		}
-
-		// initialise the list of targets for each level
-		for _, t := range mx.targets {
-			for _, lv := range Levels {
-				if lv <= t.Level {
-					mx.levelTargets[lv] = append(mx.levelTargets[lv], t)
-				}
-			}
-		}
-
-		l.backend = mx
-		return nil
-	}
+func (m *mux) init() {
+	m.ch = make(chan entry, 100)
+	m.formats = map[string]*formatref{}
+	m.targets = []*target{}
+	m.levelTargets = [numLevels][]*target{}
 }
 
 // close closes the mux channel.
@@ -96,8 +94,13 @@ func (mx *mux) dispatch(e entry) {
 	mx.ch <- e
 }
 
-// run reads log entries from the mux channel and dispatches them to each
-// target.  the run loop terminates when the mux channel is closed, after
+// provides a run loop reading log entries from the mux channel and
+// dispatching them to each target enabled for the log level of the
+// entry.
+//
+// This function runs in a goroutine initiated by the start() function.
+//
+// The run loop terminates when the mux channel is closed, after
 // which the stop() function is called of any target transport that
 // implements such a function.
 func (mx *mux) run() {
@@ -153,33 +156,4 @@ func (mx *mux) start() (func(), error) {
 	}
 
 	return cfn, nil
-}
-
-// Format registers a Formatter with the mux, with a specified id.  The id
-// must be unique within the mux.
-//
-// A Formatter added to the mux may be shared by multiple targets by
-// specifying a TargetFormat(id) option with the same id as the Formatter.
-// The Formatter must already have been added to the mux before it can be
-// referenced by a target.
-//
-// A Formatter that is not shared by multiple targets does not need to be
-// added to the mux separately; a target-specific Formatter may be configured
-// directly using the TargetFormat(Formatter) option for the relevant target.
-func Format(id string, f FormatterFactory) func(*mux) error {
-	return func(mx *mux) error {
-		f, err := f()
-		if err != nil {
-			return err
-		}
-
-		if _, ok := mx.formats[id]; ok {
-			return fmt.Errorf("format id %q: %w", id, ErrFormatAlreadyRegistered)
-		}
-		mx.formats[id] = &formatref{
-			idx:       len(mx.formats),
-			Formatter: f,
-		}
-		return nil
-	}
 }

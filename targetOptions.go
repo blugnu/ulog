@@ -1,41 +1,8 @@
 package ulog
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
 )
-
-type TargetOption = func(*mux, *target) error // TargetOption is a function that configures a target
-
-// Target is a MuxOption that configures and adds a target to a mux.
-func Target(cfg ...TargetOption) MuxOption {
-	return func(mx *mux) error {
-		t := &target{
-			buf: bytes.NewBuffer(make([]byte, 0, 1024)),
-		}
-
-		// apply configuration
-		errs := []error{}
-		for _, cfg := range cfg {
-			errs = append(errs, cfg(mx, t))
-		}
-		if err := errors.Join(errs...); err != nil {
-			return err
-		}
-
-		// if no formatter or transport has been configured, use the default
-		if t.Formatter == nil {
-			t.Formatter, _ = Logfmt()()
-		}
-		if t.transport == nil {
-			t.transport, _ = StdioTransport()(mx, t)
-		}
-
-		mx.targets = append(mx.targets, t)
-		return nil
-	}
-}
 
 // TargetFormat sets the Formatter for a target.  The parameter to
 // this function must be a Formatter or a (string) id of a Formatter
@@ -88,12 +55,12 @@ func TargetLevel(level Level) TargetOption {
 	}
 }
 
-type TransportFactory = func(*mux, *target) (transport, error)
+type TransportFactory = func() (transport, error)
 
 // TargetTransport sets the Transport for a target.
 func TargetTransport(cfg TransportFactory) TargetOption {
 	return func(mx *mux, tg *target) error {
-		tr, err := cfg(mx, tg)
+		tr, err := cfg()
 		if err != nil {
 			return err
 		}

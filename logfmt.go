@@ -5,6 +5,52 @@ import (
 	"strconv"
 )
 
+type LogfmtOption func(*logfmt) error // LogfmtOption is a function that configures a logfmt formatter
+
+// LogfmtFormatter configures a logfmt formatter to format entries in the logfmt format:
+//
+// The default formatter will produce output similar to:
+//
+//	time=2006-01-02T15:04:05.000000Z level=INFO  message="some logged message"
+//
+// Configuration options are provided to allow the default labels and values for the level
+// field:
+//
+// LogfmtLabels() may be used to configure the labels used for each of the core fields
+// in an entry: TimestampField, LevelField, MessageField.  The order of the fields
+// is fixed and cannot be changed.
+//
+// LogfmtLevels() may be used to configure the values used for the LevelField value.
+func LogfmtFormatter(opt ...LogfmtOption) func() (Formatter, error) {
+	return func() (Formatter, error) {
+		lf := &logfmt{
+			keys: [numFields][]byte{
+				[]byte("time="),
+				[]byte(" level="),
+				[]byte(" message=\""),
+				[]byte(" file=\""),
+				[]byte(" function=\""),
+			},
+			levels: [numLevels][]byte{
+				{},
+				[]byte("FATAL"),
+				[]byte("ERROR"),
+				[]byte("WARN "),
+				[]byte("INFO "),
+				[]byte("DEBUG"),
+				[]byte("TRACE"),
+			},
+		}
+
+		for _, o := range opt {
+			if err := o(lf); err != nil {
+				return nil, err
+			}
+		}
+		return lf, nil
+	}
+}
+
 // logfmt is a formatter that formats entries as logfmt.
 type logfmt struct {
 	keys   [numFields][]byte

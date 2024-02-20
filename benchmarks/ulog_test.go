@@ -27,11 +27,11 @@ import (
 	"github.com/blugnu/ulog"
 )
 
-func newUlogLogFmt(level ulog.Level, opt ...ulog.LoggerOption) (ulog.Logger, ulog.CloseFn) {
+func newUlogJson(level ulog.Level, opt ...ulog.LoggerOption) (ulog.Logger, ulog.CloseFn) {
 	opt = append(opt,
 		ulog.LoggerLevel(level),
 		ulog.LoggerOutput(io.Discard),
-		ulog.LoggerFormat(ulog.Logfmt()),
+		ulog.LoggerFormat(ulog.NewJSONFormatter()),
 	)
 
 	logger, cfn, _ := ulog.NewLogger(context.Background(), opt...)
@@ -39,12 +39,26 @@ func newUlogLogFmt(level ulog.Level, opt ...ulog.LoggerOption) (ulog.Logger, ulo
 	return logger, cfn
 }
 
-func newUlogJson(level ulog.Level) (ulog.Logger, ulog.CloseFn) {
-	logger, cfn, _ := ulog.NewLogger(context.Background(),
+func newUlogLogfmt(level ulog.Level, opt ...ulog.LoggerOption) (ulog.Logger, ulog.CloseFn) {
+	opt = append(opt,
 		ulog.LoggerLevel(level),
-		ulog.LoggerFormat(ulog.NewJSONFormatter()),
 		ulog.LoggerOutput(io.Discard),
+		ulog.LoggerFormat(ulog.LogfmtFormatter()),
 	)
+
+	logger, cfn, _ := ulog.NewLogger(context.Background(), opt...)
+
+	return logger, cfn
+}
+
+func newUlogMsgpack(level ulog.Level, opt ...ulog.LoggerOption) (ulog.Logger, ulog.CloseFn) {
+	opt = append(opt,
+		ulog.LoggerLevel(level),
+		ulog.LoggerOutput(io.Discard),
+		ulog.LoggerFormat(ulog.MsgpackFormatter()),
+	)
+
+	logger, cfn, _ := ulog.NewLogger(context.Background(), opt...)
 
 	return logger, cfn
 }
@@ -53,9 +67,9 @@ func newUlogMux(level ulog.Level) (ulog.Logger, ulog.CloseFn) {
 	logger, cfn, _ := ulog.NewLogger(
 		context.Background(),
 		ulog.Mux(
-			ulog.Target(
+			ulog.MuxTarget(
 				ulog.TargetLevel(level),
-				ulog.TargetFormat(ulog.Logfmt()),
+				ulog.TargetFormat(ulog.LogfmtFormatter()),
 				ulog.TargetTransport(ulog.StdioTransport(
 					ulog.StdioOutput(io.Discard),
 				)),

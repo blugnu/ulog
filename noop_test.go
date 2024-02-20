@@ -16,7 +16,7 @@ func TestNoop(t *testing.T) {
 	// panic
 
 	// ARRANGE/ASSERT
-	test.ExpectPanic(nil).IsRecovered(t)
+	defer test.ExpectPanic(nil).Assert(t)
 
 	// ACT
 	noop.Close()
@@ -55,29 +55,18 @@ func TestNoop(t *testing.T) {
 		// ARRANGE
 		testcases := []struct {
 			name      string
-			cfg       FatalExitOption
 			fn        func()
 			callsExit bool
 		}{
-			{name: "ExitAlways (Fatal)", cfg: ExitAlways, fn: func() { noop.logger.Fatal("test") }, callsExit: true},
-			{name: "ExitAlways (Fatalf)", cfg: ExitAlways, fn: func() { noop.logger.Fatalf("test") }, callsExit: true},
-			{name: "ExitNever (Fatal)", cfg: ExitNever, fn: func() { noop.logger.Fatal("test") }, callsExit: false},
-			{name: "ExitNever (Fatalf)", cfg: ExitNever, fn: func() { noop.logger.Fatalf("test") }, callsExit: false},
-			{name: "ExitWhenLogged (Fatal)", cfg: ExitWhenLogged, fn: func() { noop.logger.Fatal("test") }, callsExit: false},
-			{name: "ExitWhenLogged (Fatalf)", cfg: ExitWhenLogged, fn: func() { noop.logger.Fatalf("test") }, callsExit: false},
+			{name: "ExitAlways (Fatal)", fn: func() { noop.logger.Fatal("test") }, callsExit: true},
+			{name: "ExitAlways (Fatalf)", fn: func() { noop.logger.Fatalf("test") }, callsExit: true},
+			{name: "Log(FatalLevel)", fn: func() { noop.logger.Log(FatalLevel, "test") }, callsExit: false},
 		}
 		for _, tc := range testcases {
 			t.Run(tc.name, func(t *testing.T) {
 				// ARRANGE
-				{
-					og := ExitOnFatalLog
-					defer func() { ExitOnFatalLog = og }()
-				}
-				{
-					og := ExitFn
-					defer func() { ExitFn = og }()
-				}
-				ExitOnFatalLog = tc.cfg
+				og := ExitFn
+				defer func() { ExitFn = og }()
 				exitWasCalled := false
 				ExitFn = func(int) { exitWasCalled = true }
 
@@ -85,10 +74,25 @@ func TestNoop(t *testing.T) {
 				tc.fn()
 
 				// ASSERT
-				t.Run("calls ExitFn", func(t *testing.T) {
-					test.Equal(t, tc.callsExit, exitWasCalled)
-				})
+				test.That(t, exitWasCalled).Equals(tc.callsExit)
 			})
 		}
 	})
+}
+
+func TestNoopWithExitCode(t *testing.T) {
+	// ARRANGE
+	og := ExitFn
+	defer func() { ExitFn = og }()
+	exitCode := 0
+	ExitFn = func(n int) { exitCode = n }
+
+	// ACT
+	noop := &nooplogger{}
+	result := noop.WithExitCode(42)
+	result.Fatal("test")
+
+	// ASSERT
+	test.That(t, result).Equals(&nooplogger{exitCode: 42})
+	test.That(t, exitCode).Equals(42)
 }

@@ -2,164 +2,207 @@ package ulog
 
 import (
 	"bytes"
-	"reflect"
+	"sync"
 	"testing"
 
 	"github.com/blugnu/test"
 )
 
 func Test_newFields(t *testing.T) {
-	t.Run("with capacity == 0", func(t *testing.T) {
-		// ACT
-		got := newFields(0)
-
-		// ASSERT
-		wanted := (*fields)(nil)
-		if wanted != got {
-			t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-		}
-	})
-
-	t.Run("with capacity > 0", func(t *testing.T) {
-		// ACT
-		got := newFields(1)
-
-		// ASSERT
-		wanted := true
-		t.Run("initialises", func(t *testing.T) {
-			t.Run("mutex", func(t *testing.T) {
-				got := got.mutex != nil
-				if wanted != got {
-					t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-				}
-			})
-
-			t.Run("m", func(t *testing.T) {
-				got := got.m != nil
-				if wanted != got {
-					t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-				}
-			})
-
-			t.Run("b", func(t *testing.T) {
-				got := got.b != nil
-				if wanted != got {
-					t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-				}
-			})
-		})
-	})
-}
-
-func Test_fields_merge(t *testing.T) {
 	// ARRANGE
-	mx := &mockmutex{}
-	sut := &fields{
-		mutex: mx,
-		m: map[string]any{
-			"k1": "v1",
-			"k2": "v2",
+	testcases := []struct {
+		scenario string
+		exec     func(t *testing.T)
+	}{
+		{scenario: "newFields(0)",
+			exec: func(t *testing.T) {
+				// ACT
+				result := newFields(0)
+
+				// ASSERT
+				test.That(t, result).IsNil()
+			},
+		},
+		{scenario: "newFields(1)",
+			exec: func(t *testing.T) {
+				// ACT
+				result := newFields(1)
+
+				// ASSERT
+				test.That(t, result).Equals(&fields{
+					mutex: &sync.Mutex{},
+					m:     make(map[string]any),
+					b:     map[int][]byte{},
+				})
+			},
 		},
 	}
-
-	// ARRANGE
-	type result struct {
-		isCopy bool
-		fields map[string]any
-	}
-	testcases := []struct {
-		name     string
-		fn       func(sut *fields) *fields
-		syncsafe bool
-		want     result
-	}{
-		{name: "merge no new key", fn: func(sut *fields) *fields { return sut.merge(nil) }, syncsafe: true, want: result{isCopy: false, fields: map[string]any{"k1": "v1", "k2": "v2"}}},
-		{name: "merge new key", fn: func(sut *fields) *fields { return sut.merge(map[string]any{"k3": "v3"}) }, want: result{isCopy: true, fields: map[string]any{"k1": "v1", "k2": "v2", "k3": "v3"}}},
-		{name: "merge existing key", fn: func(sut *fields) *fields { return sut.merge(map[string]any{"k3": "modified"}) }, want: result{isCopy: true, fields: map[string]any{"k1": "v1", "k2": "v2", "k3": "modified"}}},
-		{name: "merge new and existing keys", fn: func(sut *fields) *fields { return sut.merge(map[string]any{"k1": "modified", "k3": "v3"}) }, want: result{isCopy: true, fields: map[string]any{"k1": "modified", "k2": "v2", "k3": "v3"}}},
-	}
 	for _, tc := range testcases {
-		t.Run(tc.name, func(t *testing.T) {
-			// ARRANGE
-			defer mx.Reset()
+		t.Run(tc.scenario, func(t *testing.T) {
+			tc.exec(t)
+		})
+	}
+}
 
-			// ACT
-			cpy := tc.fn(sut)
+func Test_fields(t *testing.T) {
+	// ARRANGE
+	mx := &mockmutex{}
+	sut := &fields{mutex: mx}
 
-			// ASSERT
-			IsSyncSafe(t, tc.syncsafe, mx)
-
-			t.Run("returns a copy", func(t *testing.T) {
-				wanted := tc.want.isCopy
-				got := reflect.ValueOf(sut).Pointer() != reflect.ValueOf(cpy).Pointer()
-				if wanted != got {
-					t.Errorf("\nwanted %v\ngot    %v", wanted, got)
+	testcases := []struct {
+		scenario string
+		exec     func(t *testing.T)
+	}{
+		// merge tests
+		{scenario: "merge(nil)",
+			exec: func(t *testing.T) {
+				// ARRANGE
+				sut.m = map[string]any{
+					"k1": "v1",
+					"k2": "v2",
 				}
 
-				t.Run("with fields", func(t *testing.T) {
-					wanted := tc.want.fields
-					got := cpy.m
-					test.Maps(t, wanted, got)
+				// ACT
+				result := sut.merge(nil)
+
+				// ASSERT
+				IsSyncSafe(t, true, mx)
+				test.Value(t, result).Equals(sut)
+				test.That(t, result.m).Equals(map[string]any{
+					"k1": "v1",
+					"k2": "v2",
 				})
-			})
-		})
-	}
-}
+			},
+		},
+		{scenario: "merge(new key)",
+			exec: func(t *testing.T) {
+				// ARRANGE
+				sut.m = map[string]any{
+					"k1": "v1",
+					"k2": "v2",
+				}
 
-func Test_fields_getFormattedBytes(t *testing.T) {
-	// ARRANGE
-	mx := &mockmutex{}
+				// ACT
+				result := sut.merge(map[string]any{"k3": "v3"})
 
-	testcases := []struct {
-		name     string
-		sut      *fields
-		syncsafe bool
-		result   *bytes.Buffer
-	}{
-		{name: "nil fields", sut: nil, syncsafe: true, result: nil},
-		{name: "new format", sut: &fields{mutex: mx, b: map[int][]byte{}}, result: bytes.NewBuffer(nil)},
-		{name: "cached format", sut: &fields{mutex: mx, b: map[int][]byte{1: []byte("content")}}, result: bytes.NewBufferString("content")},
+				// ASSERT
+				IsSyncSafe(t, false, mx)
+				test.Value(t, result).DoesNotEqual(sut)
+				test.That(t, result.m).Equals(map[string]any{
+					"k1": "v1",
+					"k2": "v2",
+					"k3": "v3",
+				})
+			},
+		},
+		{scenario: "merge(modify existing key)",
+			exec: func(t *testing.T) {
+				// ARRANGE
+				sut.m = map[string]any{
+					"k1": "v1",
+					"k2": "v2",
+				}
+
+				// ACT
+				result := sut.merge(map[string]any{"k2": "modified"})
+
+				// ASSERT
+				IsSyncSafe(t, false, mx)
+				test.Value(t, result).DoesNotEqual(sut)
+				test.That(t, result.m).Equals(map[string]any{
+					"k1": "v1",
+					"k2": "modified",
+				})
+			},
+		},
+		{scenario: "merge(add key and modify existing key)",
+			exec: func(t *testing.T) {
+				// ARRANGE
+				sut.m = map[string]any{
+					"k1": "v1",
+					"k2": "v2",
+				}
+
+				// ACT
+				result := sut.merge(map[string]any{"k1": "modified", "k3": "v3"})
+
+				// ASSERT
+				IsSyncSafe(t, false, mx)
+				test.Value(t, result).DoesNotEqual(sut)
+				test.That(t, result.m).Equals(map[string]any{
+					"k1": "modified",
+					"k2": "v2",
+					"k3": "v3",
+				})
+			},
+		},
+
+		// getFormattedBytes tests
+		{scenario: "getFormattedBytes(id)/nil receiver",
+			exec: func(t *testing.T) {
+				// ARRANGE
+				id := 1
+
+				// ACT
+				result := ((*fields)(nil)).getFormattedBytes(id)
+
+				// ASSERT
+				IsSyncSafe(t, true, mx)
+				test.That(t, result).IsNil()
+			},
+		},
+		{scenario: "getFormattedBytes(id)/new id",
+			exec: func(t *testing.T) {
+				// ARRANGE
+				id := 1
+				sut.b = map[int][]byte{}
+
+				// ACT
+				result := sut.getFormattedBytes(id)
+
+				// ASSERT
+				IsSyncSafe(t, false, mx)
+				test.That(t, result).Equals(bytes.NewBuffer(nil))
+			},
+		},
+		{scenario: "getFormattedBytes(id)/cached id",
+			exec: func(t *testing.T) {
+				// ARRANGE
+				id := 1
+				sut.b = map[int][]byte{id: []byte("content")}
+
+				// ACT
+				result := sut.getFormattedBytes(id)
+
+				// ASSERT
+				IsSyncSafe(t, false, mx)
+				test.That(t, result).Equals(bytes.NewBufferString("content"))
+			},
+		},
+
+		// setFormattedBytes tests
+		{scenario: "setFormattedBytes(id, content)",
+			exec: func(t *testing.T) {
+				// ARRANGE
+				id := 1
+				sut.b = map[int][]byte{}
+
+				// ACT
+				sut.setFormattedBytes(id, []byte("content"))
+
+				// ASSERT
+				IsSyncSafe(t, false, mx)
+				test.That(t, sut.b).Equals(map[int][]byte{id: []byte("content")})
+			},
+		},
 	}
 	for _, tc := range testcases {
-		t.Run(tc.name, func(t *testing.T) {
-			// ARRANGE
-			defer mx.Reset()
-
-			// ACT
-			got := tc.sut.getFormattedBytes(1)
-
-			// ASSERT
-			IsSyncSafe(t, tc.syncsafe, mx)
-
-			wanted := tc.result
-			switch {
-			case wanted == nil:
-				if wanted != got {
-					t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-				}
-			case wanted != nil:
-				if !bytes.Equal(wanted.Bytes(), got.Bytes()) {
-					t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-				}
-			}
+		t.Run(tc.scenario, func(t *testing.T) {
+			defer func() {
+				mx.Reset()
+				sut = &fields{mutex: mx}
+			}()
+			tc.exec(t)
 		})
-	}
-}
-
-func Test_fields_setFormattedBytes(t *testing.T) {
-	// ARRANGE
-	mx := &mockmutex{}
-	sut := &fields{mutex: mx, b: map[int][]byte{}}
-
-	// ACT
-	sut.setFormattedBytes(1, []byte("content"))
-
-	// ASSERT
-	IsSyncSafe(t, false, mx)
-
-	wanted := map[int][]byte{1: []byte("content")}
-	got := sut.b
-	if !reflect.DeepEqual(wanted, got) {
-		t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
 	}
 }

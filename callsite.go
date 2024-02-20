@@ -7,20 +7,19 @@ import (
 
 var ulogframes = 3
 
-const (
-	maxCallerDepth = 25
-	ulogpkg        = "github.com/blugnu/ulog"
-)
-
 type callsite struct {
 	function string
 	file     string
 	line     int
 }
 
-// caller returns the first non-ulog caller in the call stack.
+// caller returns the callsite of the first non-ulog caller in the call stack.
 func caller() *callsite {
-	// Restrict the lookback frames to avoid runaway lookups
+	const (
+		maxCallerDepth = 25 // restrict the lookback frames to avoid runaway lookups
+		ulogpkg        = "github.com/blugnu/ulog"
+	)
+
 	pcs := make([]uintptr, maxCallerDepth)
 	depth := runtime.Callers(ulogframes, pcs)
 	frames := runtime.CallersFrames(pcs[:depth])

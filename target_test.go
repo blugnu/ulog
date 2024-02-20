@@ -69,7 +69,7 @@ func TestTarget(t *testing.T) {
 	}
 
 	// ACT
-	err := Target(cfg())(mx)
+	err := MuxTarget(cfg())(mx)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -104,7 +104,7 @@ func TestTarget_whenConfigurationFails(t *testing.T) {
 	}
 
 	// ACT
-	err := Target(cfg())(mx)
+	err := MuxTarget(cfg())(mx)
 
 	// ASSERT
 	t.Run("option error is returned", func(t *testing.T) {
@@ -294,7 +294,7 @@ func TestTargetTransport(t *testing.T) {
 		// ARRANGE
 		tg := &target{}
 		tp := &mocktransport{}
-		cfg := func(*mux, *target) (transport, error) {
+		cfg := func() (transport, error) {
 			return tp, nil
 		}
 
@@ -318,7 +318,7 @@ func TestTargetTransport(t *testing.T) {
 		// ARRANGE
 		tg := &target{}
 		opterr := errors.New("option error")
-		cfg := func(*mux, *target) (transport, error) {
+		cfg := func() (transport, error) {
 			return nil, opterr
 		}
 

@@ -101,7 +101,7 @@ func BenchmarkDisabledWithoutFields(b *testing.B) {
 		})
 	})
 	b.Run("blugnu/ulog-logfmt", func(b *testing.B) {
-		logger, cfn := newUlogLogFmt(ulog.ErrorLevel)
+		logger, cfn := newUlogLogfmt(ulog.ErrorLevel)
 		defer cfn()
 
 		b.ResetTimer()
@@ -112,7 +112,7 @@ func BenchmarkDisabledWithoutFields(b *testing.B) {
 		})
 	})
 	b.Run("blugnu/ulog-logfmt-with-args", func(b *testing.B) {
-		logger, cfn := newUlogLogFmt(ulog.ErrorLevel)
+		logger, cfn := newUlogLogfmt(ulog.ErrorLevel)
 		defer cfn()
 
 		b.ResetTimer()
@@ -186,7 +186,7 @@ func BenchmarkDisabledAccumulatedContext(b *testing.B) {
 	}
 
 	b.Run("blugnu/ulog-logfmt", func(b *testing.B) {
-		logger, cfn := newUlogLogFmt(ulog.ErrorLevel)
+		logger, cfn := newUlogLogfmt(ulog.ErrorLevel)
 		defer cfn()
 
 		logger = logger.WithFields(fakeUlogFields())
@@ -199,7 +199,7 @@ func BenchmarkDisabledAccumulatedContext(b *testing.B) {
 		})
 	})
 	b.Run("blugnu/ulog-logfmt-levelled", func(b *testing.B) {
-		logger, cfn := newUlogLogFmt(ulog.ErrorLevel)
+		logger, cfn := newUlogLogfmt(ulog.ErrorLevel)
 		defer cfn()
 
 		info := logger.AtLevel(ulog.InfoLevel).WithFields(fakeUlogFields())
@@ -265,7 +265,7 @@ func BenchmarkDisabledAddingFields(b *testing.B) {
 		})
 	})
 	b.Run("blugnu/ulog-logfmt", func(b *testing.B) {
-		logger, cfn := newUlogLogFmt(ulog.ErrorLevel)
+		logger, cfn := newUlogLogfmt(ulog.ErrorLevel)
 		defer cfn()
 
 		b.ResetTimer()
@@ -276,7 +276,7 @@ func BenchmarkDisabledAddingFields(b *testing.B) {
 		})
 	})
 	b.Run("blugnu/ulog-logfmt-levelled", func(b *testing.B) {
-		logger, cfn := newUlogLogFmt(ulog.ErrorLevel)
+		logger, cfn := newUlogLogfmt(ulog.ErrorLevel)
 		defer cfn()
 
 		b.ResetTimer()
@@ -349,7 +349,18 @@ func BenchmarkWithoutFields(b *testing.B) {
 		})
 	})
 	b.Run("blugnu/ulog-logfmt", func(b *testing.B) {
-		logger, cfn := newUlogLogFmt(ulog.InfoLevel)
+		logger, cfn := newUlogLogfmt(ulog.InfoLevel)
+		defer cfn()
+
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				logger.Info(getMessage(0))
+			}
+		})
+	})
+	b.Run("blugnu/ulog-msgpack", func(b *testing.B) {
+		logger, cfn := newUlogMsgpack(ulog.InfoLevel)
 		defer cfn()
 
 		b.ResetTimer()
@@ -400,7 +411,7 @@ func BenchmarkCallsiteOverhead(b *testing.B) {
 	}
 
 	b.Run("blugnu/ulog-no-callsite", func(b *testing.B) {
-		logger, cfn := newUlogLogFmt(ulog.InfoLevel, ulog.LogCallsite(false))
+		logger, cfn := newUlogLogfmt(ulog.InfoLevel, ulog.LogCallsite(false))
 		defer cfn()
 
 		b.ResetTimer()
@@ -411,8 +422,30 @@ func BenchmarkCallsiteOverhead(b *testing.B) {
 		})
 	})
 
-	b.Run("blugnu/ulog-with-callsite", func(b *testing.B) {
-		logger, cfn := newUlogLogFmt(ulog.InfoLevel, ulog.LogCallsite(true))
+	b.Run("blugnu/ulog-with-callsite-json", func(b *testing.B) {
+		logger, cfn := newUlogJson(ulog.InfoLevel, ulog.LogCallsite(true))
+		defer cfn()
+
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				logger.Info(getMessage(0))
+			}
+		})
+	})
+	b.Run("blugnu/ulog-with-callsite-logfmt", func(b *testing.B) {
+		logger, cfn := newUlogLogfmt(ulog.InfoLevel, ulog.LogCallsite(true))
+		defer cfn()
+
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				logger.Info(getMessage(0))
+			}
+		})
+	})
+	b.Run("blugnu/ulog-with-callsite-msgpack", func(b *testing.B) {
+		logger, cfn := newUlogMsgpack(ulog.InfoLevel, ulog.LogCallsite(true))
 		defer cfn()
 
 		b.ResetTimer()
@@ -474,7 +507,20 @@ func BenchmarkAccumulatedContext(b *testing.B) {
 		})
 	})
 	b.Run("blugnu/ulog-logfmt", func(b *testing.B) {
-		logger, cfn := newUlogLogFmt(ulog.InfoLevel)
+		logger, cfn := newUlogLogfmt(ulog.InfoLevel)
+		defer cfn()
+
+		logger = logger.WithFields(fakeUlogFields())
+
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				logger.Info(getMessage(0))
+			}
+		})
+	})
+	b.Run("blugnu/ulog-msgpack", func(b *testing.B) {
+		logger, cfn := newUlogMsgpack(ulog.InfoLevel)
 		defer cfn()
 
 		logger = logger.WithFields(fakeUlogFields())
@@ -549,7 +595,18 @@ func BenchmarkAddingFields(b *testing.B) {
 		})
 	})
 	b.Run("blugnu/ulog-logfmt", func(b *testing.B) {
-		logger, cfn := newUlogLogFmt(ulog.InfoLevel)
+		logger, cfn := newUlogLogfmt(ulog.InfoLevel)
+		defer cfn()
+
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				logger.WithFields(fakeUlogFields()).Info(getMessage(0))
+			}
+		})
+	})
+	b.Run("blugnu/ulog-msgpack", func(b *testing.B) {
+		logger, cfn := newUlogMsgpack(ulog.InfoLevel)
 		defer cfn()
 
 		b.ResetTimer()

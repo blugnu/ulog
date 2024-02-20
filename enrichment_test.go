@@ -3,25 +3,22 @@ package ulog
 import (
 	"context"
 	"testing"
+
+	"github.com/blugnu/test"
 )
 
 func TestRegisterEnrichment(t *testing.T) {
-	// ARRANGE
-	oef := enrichment
-	defer func() { enrichment = oef }()
+	t.Run("registered enrichments", func(t *testing.T) {
+		// ARRANGE
+		test.That(t, len(enrichment), "initial").Equals(0)
 
-	f := func(ctx context.Context) map[string]any { return nil }
+		oef := enrichment
+		defer func() { enrichment = oef }()
 
-	// ACT
-	if len(oef) != 0 {
-		t.Fatal("`decorators` is not empty")
-	}
-	RegisterEnrichment(f)
+		// ACT
+		RegisterEnrichment(func(ctx context.Context) map[string]any { return nil })
 
-	// ASSERT
-	wanted := 1
-	got := len(enrichment)
-	if wanted != got {
-		t.Errorf("wanted %v, got %v", wanted, got)
-	}
+		// ASSERT
+		test.That(t, len(enrichment), "after registration").Equals(1)
+	})
 }

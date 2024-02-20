@@ -5,10 +5,64 @@ import (
 	"errors"
 )
 
-// logger provides a configurable logger. The logger provides a sync.Pool
-// of entries that are reused to reduce allocations.  The logger also
-// provides a dispatcher that is responsible for dispatching log entries
-// to a backend.
+// LoggerOption is a function for configuring a logger
+type LoggerOption = func(*logger) error
+
+// NewLogger returns a new logger with the given configuration options applied and a
+// close function that must be called to cleanly shutdown the logger and ensure
+// that log entries are not lost.
+//
+// If there are any errors in the configuration, a nil logger is returned along
+// with the error.  In this situation, the close function returned is a no-op;
+// it is safe to call it, immediately or deferred.
+//
+// If the logger is configured without a backend, a stdio backend will be
+// used with a logfmt formatter and os.Stdout as the output.
+//
+// If no Level is configured, the default level is Info.
+func NewLogger(ctx context.Context, cfg ...LoggerOption) (Logger, CloseFn, error) {
+	cfn := func() { /* NO-OP */ }
+
+	logger := &logger{}
+	ic, err := logger.init(ctx, cfg...)
+	if err != nil {
+		return nil, cfn, err
+	}
+
+	if logger.backend == nil {
+		logger.backend = newStdioBackend(nil, nil)
+	}
+	ic.dispatcher = logger.backend
+
+	// a close function is always returned, even if the logger has no backend
+	// or the backend does not require a close function
+	//
+	// the close function is a no-op by default
+	//
+	// if the backend implements a start function, the close function will
+	// be set to the return value of the start function
+	//
+	// the close function is returned to the caller so that the caller can
+	// ensure that the logger is cleanly shutdown in a normal exit process
+	// so that log entries are not lost
+	//
+	// the close function is also called if the logger.exit() function is
+	// called, prior to terminating the process (in which case the caller
+	// will not have an opportunity to call the close function, even if
+	// deferred)
+
+	logger.closeFn = cfn
+	if backend, ok := logger.backend.(interface{ start() (func(), error) }); ok {
+		logger.closeFn, err = backend.start()
+		if err != nil {
+			return nil, cfn, err
+		}
+	}
+	return ic, logger.closeFn, nil
+}
+
+// logger provides a configurable logger. The logger is responsible for
+// dispatching log entries to a configured backend.
 //
 // Methods for emitting log entries are provided by a separate logcontext,
 // referencing a logger.
@@ -25,12 +79,10 @@ type logger struct {
 	getCallsite func() *callsite                               // a function that returns the first non-ulog call site in the caller stack; set to noCallSite by default (always returns nil)
 }
 
-// initLogger initialises a logger with the given configuration options
-func initLogger(ctx context.Context, cfg ...LoggerOption) (*logger, *logcontext, error) {
-	lg := &logger{
-		Level:       InfoLevel, // default level is Info
-		getCallsite: noCaller,  // callsite logging is not enabled by default
-	}
+// createLogger creates a new logger and applies the supplied LoggerOptions
+func (lg *logger) init(ctx context.Context, cfg ...LoggerOption) (*logcontext, error) {
+	lg.Level = InfoLevel      // default level is Info
+	lg.getCallsite = noCaller // callsite logging is not enabled by default
 
 	// the logger will apply no enrichment unless at least one enrichment
 	// function has been registered
@@ -39,26 +91,27 @@ func initLogger(ctx context.Context, cfg ...LoggerOption) (*logger, *logcontext,
 		lg.enrich = lg.withEnrichment
 	}
 
-	// the log level enablement is determined by levelEnabled unless
-	// overridden in configuration
-	lg.enabled = lg.levelEnabled
+	// log level enablement is determined by the isLevelEnabled method
+	// unless overridden in the options
+	lg.enabled = lg.isLevelEnabled
 
-	// apply configuration, collecting any errors
+	// apply options, collecting any errors
 	errs := []error{}
 	for _, cfg := range cfg {
 		errs = append(errs, cfg(lg))
 	}
 	if err := errors.Join(errs...); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	// create the initial context for the logger
+	// create the initial logcontext for the logger
 	ic := &logcontext{
-		ctx:    ctx,
-		logger: lg,
+		ctx:      ctx,
+		logger:   lg,
+		exitCode: 1,
 	}
 
-	return lg, ic, nil
+	return ic, nil
 }
 
 // exit calls the `ExitFn` with the specified exit code.  Code paths in `ulog`
@@ -82,11 +135,11 @@ func (l *logger) log(e entry) {
 	l.backend.dispatch(e)
 }
 
-// levelEnabled returns true if the given level is enabled for the logger
+// isLevelEnabled returns true if the given level is enabled for the logger
 //
 // This is the default implementation of the enabled function.  It may
 // replaced by the SetEnablement configuration option (future enhancement).
-func (l *logger) levelEnabled(ctx context.Context, level Level) bool {
+func (l *logger) isLevelEnabled(ctx context.Context, level Level) bool {
 	return level <= l.Level
 }
 
@@ -97,7 +150,7 @@ func (l *logger) levelEnabled(ctx context.Context, level Level) bool {
 // functions are registered (since in that case enrichment cannot result in
 // additional fields being derived from the new context).
 func (l *logger) noEnrichment(og *logcontext, ctx context.Context) *logcontext {
-	return og.new(ctx, og.dispatcher, nil)
+	return og.new(ctx, og.dispatcher, nil, og.exitCode)
 }
 
 // withEnrichment returns a new logcontext with the specified context using the
@@ -115,5 +168,5 @@ func (l *logger) withEnrichment(og *logcontext, ctx context.Context) *logcontext
 		}
 	}
 
-	return og.new(ctx, og.dispatcher, erm)
+	return og.new(ctx, og.dispatcher, erm, og.exitCode)
 }

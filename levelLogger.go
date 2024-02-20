@@ -1,7 +1,8 @@
 package ulog
 
 // levelLogger provides a logger which is limited to emitting
-// log messages at a specific level.
+// log messages using Log() or Logf() function which emit logs
+// at the specified level.
 type levelLogger struct {
 	*logcontext
 	Level
@@ -20,12 +21,12 @@ func (lv *levelLogger) Logf(format string, args ...any) {
 
 // WithField returns a new LevelLogger with an additional field.
 func (lv *levelLogger) WithField(name string, value any) LevelLogger {
-	logger := lv.logcontext.new(lv.ctx, lv.dispatcher, map[string]any{name: value})
+	logger := lv.logcontext.new(lv.ctx, lv.dispatcher, map[string]any{name: value}, lv.exitCode)
 	return &levelLogger{logger, lv.Level}
 }
 
 // WithFields returns a new LevelLogger with additional fields.
 func (lv *levelLogger) WithFields(fields map[string]any) LevelLogger {
-	logger := lv.logcontext.new(lv.ctx, lv.dispatcher, fields)
+	logger := lv.logcontext.new(lv.ctx, lv.dispatcher, fields, lv.exitCode)
 	return &levelLogger{logger, lv.Level}
 }

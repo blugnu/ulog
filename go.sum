@@ -1,6 +1,6 @@
-github.com/blugnu/capture v0.1.0 h1:S1ZgPtzJIq0WEg38zrTGe1h+X4QC7IuXsq6JN+24Bu4=
-github.com/blugnu/capture v0.1.0/go.mod h1:blKUOxFIzjiOiaFQ2Q2rVlsEjW79q3m3pMeFPiNWlWY=
 github.com/blugnu/errorcontext v0.2.2 h1:TqFPGb0pdNWtACxvbLqqzD8fzZAoa2uXdjohgk8RRwU=
 github.com/blugnu/errorcontext v0.2.2/go.mod h1:4tMqaqNkRxLrL9d8EwWKZBbJMV+Zd8GLu+0Ih+QY3Ac=
-github.com/blugnu/test v0.2.0 h1:E3vtp3ZGRwBBEV9019WNjuXNEbWQo5USnHiE2kYel2k=
-github.com/blugnu/test v0.2.0/go.mod h1:ARB7gpFrlFWwfUnlCKFTpboO4J1pe2QbbaM3TWTGDq8=
+github.com/blugnu/msgpack v0.2.1 h1:6ow2AI8/k/H0DV7OE5BbaJHVoL2uRloZmJNS0YEGb54=
+github.com/blugnu/msgpack v0.2.1/go.mod h1:MiypHlTGVfNLKlU0xaroQFLhuOwwftIYb7YA12/ALEc=
+github.com/blugnu/test v0.3.0 h1:v5BaqaBQzollQHVm6A3cyjsd3WcHxLHNJOtzY7+ZHLw=
+github.com/blugnu/test v0.3.0/go.mod h1:bONOZa4Ep3+OFpyJ45tL157qQCK1vPAhOTN53VnMmM8=

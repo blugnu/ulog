@@ -30,12 +30,12 @@ const (
 func (lv Level) String() string {
 	s := map[Level]string{
 		levelNotSet: "<not set>",
-		FatalLevel:  "Fatal",
-		ErrorLevel:  "Error",
-		WarnLevel:   "Warn",
-		InfoLevel:   "Info",
-		DebugLevel:  "Debug",
-		TraceLevel:  "Trace",
+		FatalLevel:  "FATAL",
+		ErrorLevel:  "ERROR",
+		WarnLevel:   "warn",
+		InfoLevel:   "info",
+		DebugLevel:  "debug",
+		TraceLevel:  "trace",
 	}
 	if str, ok := s[lv]; ok {
 		return str

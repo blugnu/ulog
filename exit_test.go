@@ -1,6 +1,10 @@
 package ulog
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/blugnu/test"
+)
 
 func Test_exit(t *testing.T) {
 	// ARRANGE
@@ -15,22 +19,9 @@ func Test_exit(t *testing.T) {
 	}
 
 	// ACT
-	exit(1)
+	exit(42)
 
 	// ASSERT
-	t.Run("calls ExitFn", func(t *testing.T) {
-		wanted := true
-		got := exitWasCalled
-		if wanted != got {
-			t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-		}
-
-		t.Run("with exit code", func(t *testing.T) {
-			wanted := 1
-			got := exitCode
-			if wanted != got {
-				t.Errorf("\nwanted %#v\ngot    %#v", wanted, got)
-			}
-		})
-	})
+	test.IsTrue(t, exitWasCalled, "calls exit func")
+	test.Value(t, exitCode, "exit code set").Equals(42)
 }

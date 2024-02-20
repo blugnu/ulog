@@ -9,7 +9,9 @@ import (
 
 // logcontext captures the context in which log entries are created.
 //
-// An initial context is created when a Logger is initialized.
+// An initial context is created when a Logger is initialized.  A new logcontext
+// is created when fields are added to an existing logcontext, inheriting any fields
+// from the original context.
 type logcontext struct {
 	ctx        context.Context // ctx is the context from which the logcontext was created
 	*fields                    // fields are the fields that are added to all log entries created from the context
@@ -20,6 +22,8 @@ type logcontext struct {
 	// if xfields is not nil, they are merged with original context fields the first time a new entry is created from the context, replacing
 	// the existing fields member (xfields is then set to nil to prevent them being merged again when any subsequent entries are emitted)
 	xfields map[string]any
+
+	exitCode int // exitCode is the exit code to use when calling exit
 }
 
 // fromContext returns a new logcontext with fields enriched from a
@@ -78,8 +82,8 @@ func (lc *logcontext) makeEntryf(level Level, s string, args ...any) entry {
 }
 
 // new returns a new logcontext.
-func (lc *logcontext) new(ctx context.Context, d dispatcher, xf map[string]any) *logcontext {
-	return &logcontext{ctx, lc.fields, lc.logger, d, xf}
+func (lc *logcontext) new(ctx context.Context, d dispatcher, xf map[string]any, ex int) *logcontext {
+	return &logcontext{ctx, lc.fields, lc.logger, d, xf, ex}
 }
 
 // Log emits a log entry of a specified level to the log.
@@ -213,14 +217,14 @@ func (lc *logcontext) Fatal(err any) {
 	default:
 		lc.log(lc.makeEntryf(FatalLevel, "%v", []any{err}...))
 	}
-	lc.exit(1)
+	lc.exit(lc.exitCode)
 }
 
 // Fatalf emits a log entry at the Fatal level to the log then calls exit(1).
 // The message is formatted using the specified format string and args.
 func (lc *logcontext) Fatalf(format string, args ...any) {
 	lc.log(lc.makeEntryf(FatalLevel, format, args...))
-	lc.exit(1)
+	lc.exit(lc.exitCode)
 }
 
 // AtLevel returns a LevelLogger that is limited to emitting log messages at
@@ -230,7 +234,7 @@ func (lc *logcontext) AtLevel(level Level) LevelLogger {
 	if !lc.enabled(lc.ctx, level) {
 		return noop.levellogger
 	}
-	return &levelLogger{lc.new(lc.ctx, lc.dispatcher, nil), level}
+	return &levelLogger{lc.new(lc.ctx, lc.dispatcher, nil, lc.exitCode), level}
 }
 
 // LogTo returns a Logger that is limited to emitting log messages to a
@@ -241,11 +245,16 @@ func (lc *logcontext) LogTo(id string) (Logger, bool) {
 	if mux, ok := lc.dispatcher.(*mux); ok {
 		for _, t := range mux.targets {
 			if t.id == id {
-				return lc.new(lc.ctx, t, nil), true
+				return lc.new(lc.ctx, t, nil, lc.exitCode), true
 			}
 		}
 	}
 	return noop.logger, false
+}
+
+// WithExitCode sets the exit code to use when calling exit.
+func (lc *logcontext) WithExitCode(code int) Logger {
+	return lc.new(lc.ctx, lc.dispatcher, nil, code)
 }
 
 // WithContext returns a new Logger initialised with a specified context.
@@ -258,10 +267,14 @@ func (lc *logcontext) WithContext(ctx context.Context) Logger {
 
 // WithField returns a new Logger with an additional field.
 func (lc *logcontext) WithField(key string, value any) Logger {
-	return lc.new(lc.ctx, lc.dispatcher, map[string]any{key: value})
+	return lc.new(lc.ctx, lc.dispatcher, map[string]any{key: value}, lc.exitCode)
 }
 
 // WithFields returns a new Logger with additional fields.
 func (lc *logcontext) WithFields(fields map[string]any) Logger {
-	return lc.new(lc.ctx, lc.dispatcher, fields)
+	return lc.new(lc.ctx, lc.dispatcher, fields, lc.exitCode)
 }
+
+// func (lc *logcontext) Redirect(dest, alt io.Writer) (int, func()) {
+// 	return lc.logger.redirect(dest, alt)
+// }

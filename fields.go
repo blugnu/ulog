@@ -5,16 +5,19 @@ import (
 	"sync"
 )
 
+// FieldId is the type of a field identifier, providing an id for each standard
+// field in a log entry.  "Standard" fields are those that are always present
+// in a log entry (depending on logger configuration).
 type FieldId int
 
 const (
 	TimeField     FieldId = iota // TimeField is the FieldId of the time field
 	LevelField                   // LevelKey is the FieldId of the level field
 	MessageField                 // MessageKey is the FieldId of the message field
-	FileField                    // FileField is the FieldId of the file field (used when call-site logging is enabled)
-	FunctionField                // FunctionField is the FieldId of the function field (used when call-site logging is enabled)
+	FileField                    // FileField is the FieldId of the file field; used only when call-site logging is enabled
+	FunctionField                // FunctionField is the FieldId of the function field; used only when call-site logging is enabled
 
-	numFields = 5 // the number of possible fields in a log entry
+	numFields = 5 // the maximum number of standard fields in a log entry
 )
 
 // fields is a struct that holds custom fields associated with a *logcontext.
@@ -33,7 +36,10 @@ type fields struct {
 	b     map[int][]byte // map of formatted fields buffers, keyed by Formatter
 }
 
-// newFields returns a new fields struct with a map of the specified capacity.
+// newFields returns a new fields struct initialised with an empty map of a
+// specified capacity.
+//
+// If the specified capacity is 0 then no fields struct is created and nil is returned.
 func newFields(cap int) *fields {
 	if cap == 0 {
 		return nil

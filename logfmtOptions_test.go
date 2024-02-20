@@ -6,14 +6,14 @@ import (
 	"testing"
 )
 
-func TestNewJsonFormatter(t *testing.T) {
+func TestLogfmt(t *testing.T) {
 	t.Run("applies options", func(t *testing.T) {
 		// ARRANGE
 		optWasApplied := false
-		opt := func(*jsonfmt) error { optWasApplied = true; return nil }
+		opt := func(*logfmt) error { optWasApplied = true; return nil }
 
 		// ACT
-		_, err := NewJSONFormatter(opt)()
+		_, err := LogfmtFormatter(opt)()
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -28,16 +28,16 @@ func TestNewJsonFormatter(t *testing.T) {
 
 	t.Run("with no options", func(t *testing.T) {
 		// ACT
-		got, err := NewJSONFormatter()()
+		got, err := LogfmtFormatter()()
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
 		// ASSERT
 		t.Run("configures default key labels and level values", func(t *testing.T) {
-			wanted := &jsonfmt{
-				keys:   defaultJsonKeys,
-				levels: defaultJsonLevels,
+			wanted := &logfmt{
+				keys:   [numFields][]byte{[]byte(`time=`), []byte(` level=`), []byte(` message="`), []byte(` file="`), []byte(` function="`)},
+				levels: [numLevels][]byte{{}, []byte("FATAL"), []byte("ERROR"), []byte("WARN "), []byte("INFO "), []byte("DEBUG"), []byte("TRACE")},
 			}
 			if !reflect.DeepEqual(wanted, got) {
 				t.Errorf("\nwanted %s\ngot    %s", wanted, got)
@@ -48,10 +48,10 @@ func TestNewJsonFormatter(t *testing.T) {
 	t.Run("with option errors", func(t *testing.T) {
 		// ARRANGE
 		opterr := errors.New("option error")
-		opt := func(*jsonfmt) error { return opterr }
+		opt := func(*logfmt) error { return opterr }
 
 		// ACT
-		got, err := NewJSONFormatter(opt)()
+		got, err := LogfmtFormatter(opt)()
 
 		// ASSERT
 		t.Run("returns nil formatter", func(t *testing.T) {
@@ -70,24 +70,24 @@ func TestNewJsonFormatter(t *testing.T) {
 		})
 	})
 }
-func TestJsonKeys(t *testing.T) {
+func TestLogfmtKeys(t *testing.T) {
 	// ARRANGE
-	sut := &jsonfmt{
-		keys: [numFields]string{},
+	sut := &logfmt{
+		keys: [numFields][]byte{},
 	}
 
 	// ACT
-	_ = JsonLabels(map[FieldId]string{
+	_ = LogfmtFieldNames(map[FieldId]string{
 		TimeField:    "tm",
 		LevelField:   "lv",
 		MessageField: "msg",
 	})(sut)
 
 	// ASSERT
-	wanted := [numFields]string{"", "", ""}
-	wanted[TimeField] = "tm"
-	wanted[LevelField] = "lv"
-	wanted[MessageField] = "msg"
+	wanted := [numFields][]byte{{}, {}, {}}
+	wanted[TimeField] = []byte("tm=")
+	wanted[LevelField] = []byte(" lv=")
+	wanted[MessageField] = []byte(" msg=\"")
 
 	got := sut.keys
 	if !reflect.DeepEqual(wanted, got) {
@@ -95,28 +95,28 @@ func TestJsonKeys(t *testing.T) {
 	}
 }
 
-func TestJsonLevels(t *testing.T) {
+func TestLogfmtLevels(t *testing.T) {
 	// ARRANGE
-	f, _ := NewJSONFormatter()()
-	sut := f.(*jsonfmt)
+	f, _ := LogfmtFormatter()()
+	sut := f.(*logfmt)
 
 	// ACT
-	_ = JsonLevels(map[Level]string{
-		TraceLevel: "TRACE",
-		DebugLevel: "DEBUG",
-		ErrorLevel: "ERROR",
-		FatalLevel: "FATAL",
+	_ = LogfmtLevelLabels(map[Level]string{
+		TraceLevel: "diag",
+		DebugLevel: "debug",
+		ErrorLevel: "error",
+		FatalLevel: "fatal",
 	})(sut)
 
 	// ASSERT
-	wanted := [numLevels]string{
-		"",
-		TraceLevel: "TRACE",
-		DebugLevel: "DEBUG",
-		InfoLevel:  defaultJsonLevels[InfoLevel],
-		WarnLevel:  defaultJsonLevels[WarnLevel],
-		ErrorLevel: "ERROR",
-		FatalLevel: "FATAL",
+	wanted := [numLevels][]byte{
+		{},
+		TraceLevel: []byte("diag "),
+		DebugLevel: []byte("debug"),
+		InfoLevel:  []byte("INFO "),
+		WarnLevel:  []byte("WARN "),
+		ErrorLevel: []byte("error"),
+		FatalLevel: []byte("fatal"),
 	}
 	got := sut.levels
 	if !reflect.DeepEqual(wanted, got) {

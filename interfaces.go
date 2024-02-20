@@ -49,8 +49,8 @@ type Logger interface {
 	Debugf(format string, args ...any)            // Debugf emits a Debug level log message using a specified format string and args
 	Error(err any)                                // Error emits an Error level log message consisting of err
 	Errorf(format string, args ...any)            // Errorf emits an Error level log message using a specified format string and args
-	Fatal(err any)                                // Fatal emits a Fatal level log message then calls os.Exit(1)
-	Fatalf(format string, args ...any)            // Fatalf emits a Fatal level log message using a specified format string and args, then calls os.Exit(1)
+	Fatal(err any)                                // Fatal emits a Fatal level log message then calls ExitFn(n) with the current exit code (or 1 if not set)
+	Fatalf(format string, args ...any)            // Fatalf emits a Fatal level log message using a specified format string and args, then calls ExitFn(n) with the current exit code (or 1 if not set)
 	Info(s string)                                // Info emits an Info level log message
 	Infof(format string, args ...any)             // Infof emits an Info level log message using a specified format string and args
 	Trace(s string)                               // Trace emits a Trace level log message
@@ -60,6 +60,7 @@ type Logger interface {
 
 	AtLevel(Level) LevelLogger          // AtLevel returns a new LevelLogger with the same Context and Fields (if any) as those on the receiver Logger
 	WithContext(context.Context) Logger // WithContext returns a new Logger encapsulating the specific Context
+	WithExitCode(int) Logger            // WithExitCode returns a new Logger with a specified exit code set
 	WithField(string, any) Logger       // WithField returns a new Logger that will add a specified field to all log entries
 	WithFields(map[string]any) Logger   // WithFields returns a new Logger that will add a specified set of fields to all log entries
 }
@@ -67,12 +68,12 @@ type Logger interface {
 // MockLog is an interface implemented by a mock logger that can be used
 // to verify that log entries are emitted as expected.
 type MockLog interface {
-	ExpectEntry(...MockConfiguration)
-	ExpectTrace(...MockConfiguration)
-	ExpectDebug(...MockConfiguration)
-	ExpectInfo(...MockConfiguration)
-	ExpectWarn(...MockConfiguration)
-	ExpectFatal(...MockConfiguration)
+	ExpectEntry(...EntryExpectation)
+	ExpectTrace(...EntryExpectation)
+	ExpectDebug(...EntryExpectation)
+	ExpectInfo(...EntryExpectation)
+	ExpectWarn(...EntryExpectation)
+	ExpectFatal(...EntryExpectation)
 	ExpectationsWereMet() error
 	Reset()
 }
