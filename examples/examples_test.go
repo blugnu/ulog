@@ -10,6 +10,30 @@ import (
 	"github.com/blugnu/ulog"
 )
 
+func TestDefault(t *testing.T) {
+	ctx := context.Background()
+	log, closelog, _ := ulog.NewLogger(ctx)
+	defer closelog()
+
+	log.Info("hello world")
+	log.Error("oops!")
+}
+
+func TestCustomTimeField(t *testing.T) {
+	ctx := context.Background()
+	log, closelog, _ := ulog.NewLogger(ctx,
+		ulog.LoggerFormat(ulog.LogfmtFormatter(
+			ulog.LogfmtFieldNames(map[ulog.FieldId]string{
+				ulog.TimeField: "timestamp",
+			}),
+		)),
+	)
+	defer closelog()
+
+	log.Info("hello world")
+	log.Error("oops!")
+}
+
 func TestStdioConfiguration(t *testing.T) {
 	logger, closelog, _ := ulog.NewLogger(
 		context.Background(),
@@ -201,7 +225,7 @@ func TestLogtailMux(t *testing.T) {
 				),
 				ulog.TargetTransport(
 					ulog.LogtailTransport(
-						ulog.LogtailSourceToken("logtail.token"),
+						ulog.LogtailSourceToken("../.logtail/token"),
 					),
 				),
 			),

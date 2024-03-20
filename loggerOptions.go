@@ -8,18 +8,6 @@ import (
 
 type FormatterFactory = func() (Formatter, error) // FormatterFactory is a function that returns a new Formatter
 
-// LogCallsite returns a function that sets whether or not call site
-// information is included in logs produced by a logger
-func LogCallsite(e bool) LoggerOption {
-	return func(l *logger) error {
-		if e {
-			l.getCallsite = caller
-			_ = caller() // call callsite to perform the required run-once initialisation
-		}
-		return nil
-	}
-}
-
 // LoggerBackend returns a function that sets the backend of a logger
 func LoggerBackend(t dispatcher) LoggerOption {
 	return func(l *logger) error {
@@ -28,10 +16,14 @@ func LoggerBackend(t dispatcher) LoggerOption {
 	}
 }
 
-// LoggerLevel returns a function that sets the log level of a logger
-func LoggerLevel(level Level) LoggerOption {
+// LogCallsite returns a function that sets whether or not call site
+// information is included in logs produced by a logger
+func LogCallsite(e bool) LoggerOption {
 	return func(l *logger) error {
-		l.Level = level
+		if e {
+			l.getCallsite = caller
+			_ = caller() // call callsite to perform the required run-once initialisation
+		}
 		return nil
 	}
 }
@@ -63,6 +55,14 @@ func LoggerFormat(f FormatterFactory) LoggerOption {
 		default:
 			return fmt.Errorf("%w: backend (%T) does not support LoggerFormat", ErrInvalidConfiguration, l.backend)
 		}
+	}
+}
+
+// LoggerLevel returns a function that sets the log level of a logger
+func LoggerLevel(level Level) LoggerOption {
+	return func(l *logger) error {
+		l.Level = level
+		return nil
 	}
 }
 

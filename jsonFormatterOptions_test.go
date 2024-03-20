@@ -24,11 +24,11 @@ func TestJsonFormatterOptions(t *testing.T) {
 				// ASSERT
 				test.Error(t, err).IsNil()
 				test.That(t, f.(*jsonfmt).keys).Equals([numFields]string{
-					TimeField:     "tm",
-					LevelField:    "level",
-					MessageField:  "message",
-					FileField:     "file",
-					FunctionField: "function",
+					TimeField:             "tm",
+					LevelField:            "level",
+					MessageField:          "message",
+					CallsiteFileField:     "file",
+					CallsiteFunctionField: "function",
 				})
 			},
 		},
@@ -39,21 +39,21 @@ func TestJsonFormatterOptions(t *testing.T) {
 
 				// ACT
 				err := JSONFieldNames(map[FieldId]string{
-					TimeField:     "tm",
-					LevelField:    "lv",
-					MessageField:  "msg",
-					FileField:     "fi",
-					FunctionField: "fn",
+					TimeField:             "tm",
+					LevelField:            "lv",
+					MessageField:          "msg",
+					CallsiteFileField:     "fi",
+					CallsiteFunctionField: "fn",
 				})(f.(*jsonfmt))
 
 				// ASSERT
 				test.Error(t, err).IsNil()
 				test.That(t, f.(*jsonfmt).keys).Equals([numFields]string{
-					TimeField:     "tm",
-					LevelField:    "lv",
-					MessageField:  "msg",
-					FileField:     "fi",
-					FunctionField: "fn",
+					TimeField:             "tm",
+					LevelField:            "lv",
+					MessageField:          "msg",
+					CallsiteFileField:     "fi",
+					CallsiteFunctionField: "fn",
 				})
 			},
 		},

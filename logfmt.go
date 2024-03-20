@@ -110,10 +110,10 @@ func (w *logfmt) Format(id int, e entry, b ByteWriter) {
 	_ = b.WriteByte(char.quote)
 
 	if e.callsite != nil {
-		_, _ = b.Write(w.keys[FunctionField])
+		_, _ = b.Write(w.keys[CallsiteFunctionField])
 		_, _ = b.Write([]byte(e.callsite.function))
 		_ = b.WriteByte(char.quote)
-		_, _ = b.Write(w.keys[FileField])
+		_, _ = b.Write(w.keys[CallsiteFileField])
 		_, _ = b.Write([]byte(e.callsite.file))
 		_ = b.WriteByte(char.colon)
 		writeint(b, e.callsite.line)

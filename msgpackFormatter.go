@@ -29,11 +29,11 @@ func MsgpackFormatter(opts ...MsgpackOption) FormatterFactory {
 
 func (f *msgpackfmt) init() {
 	f.keys = [numFields][]byte{
-		LevelField:    msgpack.EncodeString("level"),
-		MessageField:  msgpack.EncodeString("message"),
-		TimeField:     msgpack.EncodeString("timestamp"),
-		FileField:     msgpack.EncodeString("file"),
-		FunctionField: msgpack.EncodeString("function"),
+		LevelField:            msgpack.EncodeString("level"),
+		MessageField:          msgpack.EncodeString("message"),
+		TimeField:             msgpack.EncodeString("timestamp"),
+		CallsiteFileField:     msgpack.EncodeString("file"),
+		CallsiteFunctionField: msgpack.EncodeString("function"),
 	}
 	f.levels = [numLevels][]byte{
 		TraceLevel: msgpack.EncodeString("trace"),

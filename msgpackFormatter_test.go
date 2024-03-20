@@ -42,11 +42,11 @@ func TestMsgpackFormatter(t *testing.T) {
 				test.Error(t, err).IsNil()
 				if result, ok := test.IsType[*msgpackfmt](t, result); ok {
 					test.That(t, result.keys).Equals([numFields][]byte{
-						LevelField:    msgpack.EncodeString("level"),
-						MessageField:  msgpack.EncodeString("message"),
-						TimeField:     msgpack.EncodeString("timestamp"),
-						FileField:     msgpack.EncodeString("file"),
-						FunctionField: msgpack.EncodeString("function"),
+						LevelField:            msgpack.EncodeString("level"),
+						MessageField:          msgpack.EncodeString("message"),
+						TimeField:             msgpack.EncodeString("timestamp"),
+						CallsiteFileField:     msgpack.EncodeString("file"),
+						CallsiteFunctionField: msgpack.EncodeString("function"),
 					})
 					test.That(t, result.levels).Equals([numLevels][]byte{
 						TraceLevel: msgpack.EncodeString("trace"),

@@ -6,7 +6,7 @@ import (
 )
 
 // LogfmtFieldNames configures the labels used for the each of the core
-// fields in a logfmt log: time, level and message.
+// fields in a logfmt log entry: time, level and message.
 //
 // A map[FieldId]string is used to override the default label for each
 // field that is required; if a field is not included in the map, the

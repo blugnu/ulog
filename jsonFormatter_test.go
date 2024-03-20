@@ -14,11 +14,11 @@ func TestNewJsonFormatter(t *testing.T) {
 	// ARRANGE
 	def := &jsonfmt{
 		keys: [numFields]string{
-			TimeField:     "time",
-			LevelField:    "level",
-			MessageField:  "message",
-			FileField:     "file",
-			FunctionField: "function",
+			TimeField:             "time",
+			LevelField:            "level",
+			MessageField:          "message",
+			CallsiteFileField:     "file",
+			CallsiteFunctionField: "function",
 		},
 		levels: [numLevels]string{
 			TraceLevel: "trace",

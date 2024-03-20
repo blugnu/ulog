@@ -12,11 +12,11 @@ func NewJSONFormatter(opt ...JsonFormatterOption) FormatterFactory {
 	return func() (Formatter, error) {
 		mf := &jsonfmt{
 			keys: [numFields]string{
-				TimeField:     "time",
-				LevelField:    "level",
-				MessageField:  "message",
-				FileField:     "file",
-				FunctionField: "function",
+				TimeField:             "time",
+				LevelField:            "level",
+				MessageField:          "message",
+				CallsiteFileField:     "file",
+				CallsiteFunctionField: "function",
 			},
 			levels: [numLevels]string{
 				TraceLevel: "trace",

@@ -11,11 +11,11 @@ import (
 type FieldId int
 
 const (
-	TimeField     FieldId = iota // TimeField is the FieldId of the time field
-	LevelField                   // LevelKey is the FieldId of the level field
-	MessageField                 // MessageKey is the FieldId of the message field
-	FileField                    // FileField is the FieldId of the file field; used only when call-site logging is enabled
-	FunctionField                // FunctionField is the FieldId of the function field; used only when call-site logging is enabled
+	TimeField             FieldId = iota // TimeField is the FieldId of the time field
+	LevelField                           // LevelKey is the FieldId of the level field
+	MessageField                         // MessageKey is the FieldId of the message field
+	CallsiteFileField                    // CallsiteFileField is the FieldId of the file field; used only when call-site logging is enabled
+	CallsiteFunctionField                // CallsiteFunctionField is the FieldId of the function field; used only when call-site logging is enabled
 
 	numFields = 5 // the maximum number of standard fields in a log entry
 )

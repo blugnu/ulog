@@ -25,11 +25,11 @@ func TestMsgpackFormatterOptions(t *testing.T) {
 				// ASSERT
 				test.That(t, err).IsNil()
 				test.That(t, sut.keys).Equals([numFields][]byte{
-					TimeField:     []byte("\xa8THE TIME"),
-					LevelField:    []byte("\xa5level"),
-					MessageField:  []byte("\xa7message"),
-					FileField:     []byte("\xa4file"),
-					FunctionField: []byte("\xa8function"),
+					TimeField:             []byte("\xa8THE TIME"),
+					LevelField:            []byte("\xa5level"),
+					MessageField:          []byte("\xa7message"),
+					CallsiteFileField:     []byte("\xa4file"),
+					CallsiteFunctionField: []byte("\xa8function"),
 				})
 			},
 		},
@@ -37,11 +37,11 @@ func TestMsgpackFormatterOptions(t *testing.T) {
 			exec: func(t *testing.T) {
 				// ARRANGE
 				keys := map[FieldId]string{
-					TimeField:     "TIME",
-					LevelField:    "LEVEL",
-					MessageField:  "MESSAGE",
-					FileField:     "FILE",
-					FunctionField: "FUNCTION",
+					TimeField:             "TIME",
+					LevelField:            "LEVEL",
+					MessageField:          "MESSAGE",
+					CallsiteFileField:     "FILE",
+					CallsiteFunctionField: "FUNCTION",
 				}
 
 				// ACT
@@ -50,11 +50,11 @@ func TestMsgpackFormatterOptions(t *testing.T) {
 				// ASSERT
 				test.That(t, err).IsNil()
 				test.That(t, sut.keys).Equals([numFields][]byte{
-					TimeField:     []byte("\xa4TIME"),
-					LevelField:    []byte("\xa5LEVEL"),
-					MessageField:  []byte("\xa7MESSAGE"),
-					FileField:     []byte("\xa4FILE"),
-					FunctionField: []byte("\xa8FUNCTION"),
+					TimeField:             []byte("\xa4TIME"),
+					LevelField:            []byte("\xa5LEVEL"),
+					MessageField:          []byte("\xa7MESSAGE"),
+					CallsiteFileField:     []byte("\xa4FILE"),
+					CallsiteFunctionField: []byte("\xa8FUNCTION"),
 				})
 			},
 		},
