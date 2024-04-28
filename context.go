@@ -9,6 +9,8 @@ import "context"
 //   - if false, then a no-op logger will be returned
 //
 //   - if true, then a panic(ErrNoContextInLogger) will occur
+//
+// FIXME: this cannot work and should be removed or reworked; currently, if different modules using ulog configure different behaviour at least one of them will get something they don't want!
 var ContextLoggerRequired bool
 
 type key int
