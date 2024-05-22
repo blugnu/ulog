@@ -174,6 +174,32 @@ func TestJsonFormatter(t *testing.T) {
 				test.Map(t, got).Equals(wanted)
 			},
 		},
+		{scenario: "struct field",
+			exec: func(t *testing.T) {
+				// ARRANGE
+				type str struct {
+					A int
+					B string
+				}
+				e.logcontext = &logcontext{
+					fields: &fields{
+						mutex: mx,
+						m:     map[string]any{"key": str{A: 1, B: "two"}},
+						b:     map[int][]byte{},
+					},
+				}
+				wanted := map[string]any{}
+				got := map[string]any{}
+
+				// ACT
+				sut.Format(0, e, dest)
+
+				// ASSERT
+				_ = json.Unmarshal([]byte(`{"time":"2010-09-08T07:06:05.4321Z","level":"info","message":"message","key":{"A":1,"B":"two"}}`), &wanted)
+				_ = json.Unmarshal(dest.Bytes(), &got)
+				test.Map(t, got).Equals(wanted)
+			},
+		},
 	}
 	for _, tc := range testcases {
 		t.Run(tc.scenario, func(t *testing.T) {

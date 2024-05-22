@@ -2,6 +2,7 @@ package ulog
 
 import (
 	"bytes"
+	"errors"
 	"testing"
 	"time"
 
@@ -394,6 +395,64 @@ func TestLogfmtFormatter(t *testing.T) {
 
 				// ASSERT
 				test.That(t, buf.String()).Equals("time=2010-09-08T07:06:05.432100Z level=INFO  message=\"message\" key=\"cached value\"")
+				IsSyncSafe(t, false, mx)
+			},
+		},
+		{scenario: "struct field/marshalling error",
+			exec: func(t *testing.T) {
+				// ARRANGE
+				buf.Reset()
+				mx.Reset()
+				defer test.Using(&jsonMarshal, func(v any) ([]byte, error) { return nil, errors.New("\"marshalling\" error") })()
+
+				// ACT
+				sut.Format(0, entry{
+					logcontext: &logcontext{
+						fields: &fields{
+							mutex: mx,
+							m:     map[string]any{"key": struct{}{}},
+							b:     map[int][]byte{},
+						},
+					},
+					Time:    tm,
+					Level:   InfoLevel,
+					Message: "message",
+				}, buf)
+
+				// ASSERT
+				test.That(t, buf.String()).Equals("time=2010-09-08T07:06:05.432100Z level=INFO  message=\"message\" key=\"LOGFMT_ERROR: error marshalling struct field: \\\"marshalling\\\" error\"")
+				IsSyncSafe(t, false, mx)
+			},
+		},
+		{scenario: "struct field",
+			exec: func(t *testing.T) {
+				// ACT
+				sut.Format(0, entry{
+					logcontext: &logcontext{
+						fields: &fields{
+							mutex: mx,
+							m: map[string]any{
+								"key": struct {
+									False    bool
+									True     bool
+									Duration time.Duration
+									String   string
+									Int      int
+									Struct   struct {
+										Sub string
+									}
+								}{false, true, 1 * time.Nanosecond, "value", 42, struct{ Sub string }{"sub"}},
+							},
+							b: map[int][]byte{},
+						},
+					},
+					Time:    tm,
+					Level:   InfoLevel,
+					Message: "message",
+				}, buf)
+
+				// ASSERT
+				test.That(t, buf.String()).Equals("time=2010-09-08T07:06:05.432100Z level=INFO  message=\"message\" key.duration=1 key.false=false key.int=42 key.string=\"value\" key.struct.sub=\"sub\" key.true=true")
 				IsSyncSafe(t, false, mx)
 			},
 		},

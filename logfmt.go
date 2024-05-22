@@ -1,8 +1,17 @@
 package ulog
 
 import (
+	"encoding/json"
 	"fmt"
+	"reflect"
+	"slices"
 	"strconv"
+	"strings"
+)
+
+// function variables for testing
+var (
+	jsonMarshal = json.Marshal
 )
 
 type LogfmtOption func(*logfmt) error // LogfmtOption is a function that configures a logfmt formatter
@@ -60,28 +69,6 @@ type logfmt struct {
 // Format implements the Formatter interface to Format log entries
 // in the logfmt Format.
 func (w *logfmt) Format(id int, e entry, b ByteWriter) {
-	writeint := func(b ByteWriter, i int) {
-		if i < 0 {
-			_ = b.WriteByte(char.hyphen)
-			i = i ^ -1 + 1
-		}
-
-		switch {
-		case i >= 0 && i <= 9:
-			_ = b.WriteByte(char.digit[i])
-		case i >= 10 && i <= 99:
-			_, _ = b.Write(buf.digits2[i])
-		case i >= 100 && i <= 999:
-			_ = b.WriteByte(char.digit[i/100])
-			_, _ = b.Write(buf.digits2[i%100])
-		case i >= 1000 && i <= 9999:
-			_, _ = b.Write(buf.digits2[i/100])
-			_, _ = b.Write(buf.digits2[i%100])
-		default:
-			_, _ = b.Write([]byte(strconv.Itoa(i)))
-		}
-	}
-
 	utc := e.Time
 	y := utc.Year()
 	ns := utc.Nanosecond()
@@ -116,7 +103,7 @@ func (w *logfmt) Format(id int, e entry, b ByteWriter) {
 		_, _ = b.Write(w.keys[CallsiteFileField])
 		_, _ = b.Write([]byte(e.callsite.file))
 		_ = b.WriteByte(char.colon)
-		writeint(b, e.callsite.line)
+		w.writeInt(b, e.callsite.line)
 		_ = b.WriteByte(char.quote)
 	}
 
@@ -130,26 +117,118 @@ func (w *logfmt) Format(id int, e entry, b ByteWriter) {
 		return
 	}
 
-	for k, v := range e.fields.m {
-		_ = fbb.WriteByte(char.space)
-		_, _ = fbb.Write([]byte(k))
-		_ = fbb.WriteByte(char.equal)
+	w.writeFields(fbb, e.fields)
 
-		switch v := v.(type) {
-		case int:
-			writeint(fbb, v)
-		case string:
-			_ = fbb.WriteByte(char.quote)
-			_, _ = fbb.Write([]byte(v))
-			_ = fbb.WriteByte(char.quote)
-		default:
-			_, _ = fbb.Write([]byte(fmt.Sprintf("%v", v)))
-		}
-	}
 	fb := make([]byte, fbb.Len())
 	copy(fb, fbb.Bytes())
 
 	e.fields.setFormattedBytes(id, fb)
 
 	_, _ = b.Write(fb)
+}
+
+func (w *logfmt) writeFields(buf ByteWriter, f *fields) {
+	for k, v := range f.m {
+		if reflect.ValueOf(v).Kind() == reflect.Struct {
+			w.writeStruct(buf, k, v)
+			continue
+		}
+
+		_ = buf.WriteByte(char.space)
+		_, _ = buf.Write([]byte(k))
+		_ = buf.WriteByte(char.equal)
+		switch v := v.(type) {
+		case int:
+			w.writeInt(buf, v)
+
+		case string:
+			_ = buf.WriteByte(char.quote)
+			_, _ = buf.Write([]byte(v))
+			_ = buf.WriteByte(char.quote)
+
+		default:
+			_, _ = buf.Write([]byte(fmt.Sprintf("%v", v)))
+		}
+	}
+}
+
+func (w *logfmt) writeInt(b ByteWriter, i int) {
+	if i < 0 {
+		_ = b.WriteByte(char.hyphen)
+		i = i ^ -1 + 1
+	}
+
+	switch {
+	case i >= 0 && i <= 9:
+		_ = b.WriteByte(char.digit[i])
+	case i >= 10 && i <= 99:
+		_, _ = b.Write(buf.digits2[i])
+	case i >= 100 && i <= 999:
+		_ = b.WriteByte(char.digit[i/100])
+		_, _ = b.Write(buf.digits2[i%100])
+	case i >= 1000 && i <= 9999:
+		_, _ = b.Write(buf.digits2[i/100])
+		_, _ = b.Write(buf.digits2[i%100])
+	default:
+		_, _ = b.Write([]byte(strconv.Itoa(i)))
+	}
+}
+
+func (w *logfmt) writeMap(buf ByteWriter, k string, m map[string]any) {
+	keys := make([]string, 0, len(m))
+	for mk := range m {
+		keys = append(keys, mk)
+	}
+	slices.Sort(keys)
+
+	for _, mk := range keys {
+		mv := m[mk]
+		mk = strings.ToLower(mk)
+		if m, ok := mv.(map[string]any); ok {
+			w.writeMap(buf, k+"."+mk, m)
+			continue
+		}
+
+		_ = buf.WriteByte(char.space)
+		_, _ = buf.Write([]byte(k))
+		_ = buf.WriteByte(char.period)
+		_, _ = buf.Write([]byte(mk))
+		_ = buf.WriteByte(char.equal)
+
+		switch v := mv.(type) {
+		case bool:
+			if v {
+				_, _ = buf.Write([]byte("true"))
+			} else {
+				_, _ = buf.Write([]byte("false"))
+			}
+
+		case string:
+			_ = buf.WriteByte(char.quote)
+			_, _ = buf.Write([]byte(v))
+			_ = buf.WriteByte(char.quote)
+
+		default:
+			_, _ = buf.Write([]byte(fmt.Sprintf("%v", v)))
+		}
+	}
+}
+
+func (w *logfmt) writeStruct(buf ByteWriter, k string, v any) bool {
+	j, err := jsonMarshal(v)
+	if err != nil {
+		_ = buf.WriteByte(char.space)
+		_, _ = buf.Write([]byte(k))
+		_ = buf.WriteByte(char.equal)
+		_, _ = buf.Write([]byte(fmt.Sprintf("%q", fmt.Sprintf("LOGFMT_ERROR: error marshalling struct field: %v", err))))
+		return false
+	}
+
+	// unmarshal the json into a map (no need to check for errors; we are
+	// unmarshalling marshalled JSON, it cannot be invalid)
+	m := map[string]any{}
+	_ = json.Unmarshal(j, &m)
+
+	w.writeMap(buf, k, m)
+	return true
 }

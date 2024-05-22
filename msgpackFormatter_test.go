@@ -129,6 +129,70 @@ func TestMsgpackFormatter(t *testing.T) {
 							test.That(t, buf.Bytes()).Equals(packedBytes(0x84, 0xa9, "timestamp", tsb, 0xa5, "level", 0xa4, "info", 0xa7, "message", 0xa5, "entry", 0xa4, "ikey", 123))
 						},
 					},
+					{scenario: "struct field",
+						exec: func(t *testing.T) {
+							// ARRANGE
+							e.logcontext = &logcontext{
+								fields: &fields{
+									mutex: mx,
+									m:     map[string]any{"struct": struct{ Field string }{"value"}},
+									b:     map[int][]byte{},
+								},
+							}
+
+							// ACT
+							sut.Format(0, e, buf)
+
+							// ASSERT
+							IsSyncSafe(t, false, mx)
+							test.That(t, buf.String()).Equals(string(packedBytes(0x84, 0xa9, "timestamp", tsb, 0xa5, "level", 0xa4, "info", 0xa7, "message", 0xa5, "entry", 0xa6, "struct", 0x81, 0xa5, "field", 0xa5, "value")))
+						},
+					},
+					{scenario: "nested structs",
+						exec: func(t *testing.T) {
+							// ARRANGE
+							e.logcontext = &logcontext{
+								fields: &fields{
+									mutex: mx,
+									m: map[string]any{
+										"outer": struct {
+											Inner struct {
+												Field string
+											}
+										}{Inner: struct{ Field string }{"value"}},
+									},
+									b: map[int][]byte{},
+								},
+							}
+
+							// ACT
+							sut.Format(0, e, buf)
+
+							// ASSERT
+							IsSyncSafe(t, false, mx)
+							test.That(t, buf.String()).Equals(string(packedBytes(0x84, 0xa9, "timestamp", tsb, 0xa5, "level", 0xa4, "info", 0xa7, "message", 0xa5, "entry", 0xa5, "outer", 0x81, 0xa5, "inner", 0x81, 0xa5, "field", 0xa5, "value")))
+						},
+					},
+					{scenario: "struct field/marshalling error",
+						exec: func(t *testing.T) {
+							// ARRANGE
+							e.logcontext = &logcontext{
+								fields: &fields{
+									mutex: mx,
+									m:     map[string]any{"struct": struct{}{}},
+									b:     map[int][]byte{},
+								},
+							}
+							defer test.Using(&jsonMarshal, func(v any) ([]byte, error) { return nil, errors.New("\"marshalling\" error") })()
+
+							// ACT
+							sut.Format(0, e, buf)
+
+							// ASSERT
+							IsSyncSafe(t, false, mx)
+							test.That(t, buf.String()).Equals(string(packedBytes(0x84, 0xa9, "timestamp", tsb, 0xa5, "level", 0xa4, "info", 0xa7, "message", 0xa5, "entry", 0xa6, "struct", 0xd9, 0x34 /* 52 chars */, "LOGFMT_ERROR: marshalling error: \"marshalling\" error")))
+						},
+					},
 					{scenario: "cached formatted fields",
 						exec: func(t *testing.T) {
 							// ARRANGE
@@ -172,90 +236,3 @@ func TestMsgpackFormatter(t *testing.T) {
 		})
 	}
 }
-
-// func Test_msgpackfmt_Format(t *testing.T) {
-// 	// ARRANGE
-
-// 	mx := &mockmutex{}
-// 	tm := time.Date(2010, 9, 8, 7, 6, 5, 432100000, time.UTC)
-// 	buf := &bytes.Buffer{}
-// 	sut := newMsgpackFormatter()
-
-// 	// we need a msgpack encoded timestampe to include in the expected
-// 	// format output; we use a msgpack encoder to do this, using the
-// 	// existing []byte buffer
-// 	//
-// 	enc, _ := msgpack.NewEncoder(buf)
-// 	_ = enc.EncodeTimestamp(tm)
-// 	ts := append([]byte{}, buf.Bytes()...)
-// 	buf.Reset()
-
-// 	testcases := []struct {
-// 		name     string
-// 		syncsafe bool
-// 		entry    entry
-// 		result   []byte
-// 	}{
-// 		{name: "no fields", syncsafe: true,
-// 			entry: entry{
-// 				logcontext: &logcontext{},
-// 				Time:       tm,
-// 				Level:      InfoLevel,
-// 				Message:    "message",
-// 			},
-// 			result: packedBytes(0x83, 0xa9, "timestamp", ts, 0xa5, "level", 0xa4, "info", 0xa7, "message", 0xa7, "message")},
-
-// 		{name: "unformatted fields",
-// 			entry: entry{
-// 				logcontext: &logcontext{
-// 					fields: &fields{
-// 						mutex: mx,
-// 						m:     map[string]any{"ikey": 123},
-// 						b:     map[int][]byte{},
-// 					},
-// 				},
-// 				Time:    tm,
-// 				Level:   InfoLevel,
-// 				Message: "message",
-// 			},
-// 			result: packedBytes(0x84, 0xa9, "timestamp", ts, 0xa5, "level", 0xa4, "info", 0xa7, "message", 0xa7, "message",
-// 				0xa4, "ikey", 123)},
-// 		{name: "cached formatted fields",
-// 			entry: entry{
-// 				logcontext: &logcontext{
-// 					fields: &fields{
-// 						mutex: mx,
-// 						m:     map[string]any{"key": "value"},
-// 						b: map[int][]byte{
-// 							0: packedBytes(0xa3, "key", 0xa5, "value"),
-// 						},
-// 					},
-// 				},
-// 				Time:    tm,
-// 				Level:   InfoLevel,
-// 				Message: "message",
-// 			},
-// 			result: packedBytes(0x84, 0xa9, "timestamp", ts, 0xa5, "level", 0xa4, "info", 0xa7, "message", 0xa7, "message",
-// 				0xa3, "key", 0xa5, "value"),
-// 		},
-// 	}
-// 	for _, tc := range testcases {
-// 		t.Run(tc.name, func(t *testing.T) {
-// 			// ARRANGE
-// 			defer mx.Reset()
-// 			defer buf.Reset()
-
-// 			// ACT
-// 			sut.Format(0, tc.entry, buf)
-
-// 			// ASSERT
-// 			IsSyncSafe(t, tc.syncsafe, mx)
-
-// 			wanted := tc.result
-// 			got := buf.Bytes()
-// 			if !bytes.Equal(wanted, got) {
-// 				t.Errorf("\nwanted %s\ngot    %s", wanted, got)
-// 			}
-// 		})
-// 	}
-// }

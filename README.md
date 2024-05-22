@@ -1,7 +1,7 @@
 <div align="center" style="margin-bottom:20px">
-  <!-- <img src=".assets/banner.png" alt="logger" /> -->
+  <img src=".assets/banner.png" alt="ulog" />
   <div align="center">
-    <a href="https://github.com/blugnu/ulog/actions/workflows/pipeline.yml"><img alt="build-status" src="https://github.com/blugnu/ulog/actions/workflows/pipeline.yml/badge.svg?branch=master&style=flat-square"/></a>
+    <a href="https://github.com/blugnu/ulog/actions/workflows/release.yml"><img alt="build-status" src="https://github.com/blugnu/ulog/actions/workflows/pipeline.yml/badge.svg?branch=master&style=flat-square"/></a>
     <a href="https://goreportcard.com/report/github.com/blugnu/ulog" ><img alt="go report" src="https://goreportcard.com/badge/github.com/blugnu/ulog"/></a>
     <a><img alt="go version >= 1.14" src="https://img.shields.io/github/go-mod/go-version/blugnu/ulog?style=flat-square"/></a>
     <a href="https://github.com/blugnu/ulog/blob/master/LICENSE"><img alt="MIT License" src="https://img.shields.io/github/license/blugnu/ulog?color=%234275f5&style=flat-square"/></a>
@@ -14,25 +14,24 @@
 
 # blugnu/ulog
 
-A highly configurable, structured logging library for Go that does not sacrifice (too much) efficiency in exchange for convenience and flexibility.
+A configurable, structured logging library for Go that does not sacrifice (too much) efficiency in exchange for convenience and flexibility.
 
 ## Features
 
-* **Highly configurable** - configure your logger to emit logs in the format you want, with the fields you want, at the level you want, sending them to the destination (or destination**s**) you want; the default configuration is designed to be sensible and useful out-of-the-box, but can be easily customised to suit your needs
+- [x] **Highly configurable** - configure your logger to emit logs in the format you want, with the fields you want, at the level you want, sending them to the destination (or destination**s**) you want; the default configuration is designed to be sensible and useful out-of-the-box, but can be easily customised to suit your needs
 
-* **Structured logging** - logs are emitted in a structured format (`logfmt` by default) that can be easily parsed by log aggregators and other tools; a JSON formatter is also provided 
+- [x] **Structured logging** - logs are emitted in a structured format (`logfmt` by default) that can be easily parsed by log aggregators and other tools; a JSON formatter is also provided 
 
-* **Contextual logging** - logs may be enriched with context from the current goroutine's context, from context provided by the caller or from context carried by an error (via support for the [blugnu/errorcontext](https://github.com/blugnu/errorcontext) module); automatic contextual enrichment can be embedded by registering a `ulog.ContextEnricher` with the logger
+- [x] **Contextual logging** - logs may be enriched with context from the context provided by the caller or from context carried by an error (via support for the [blugnu/errorcontext](https://github.com/blugnu/errorcontext) module); automatic contextual enrichment can be embedded by registering a `ulog.ContextEnricher` with the logger
 
-* **Efficient** - allocations are kept to a minimum and conditional flows eliminated where-ever possible to ensure that the overhead of logging is kept to a minimum
+- [x] **Efficient** - allocations are kept to a minimum and conditional flows eliminated where-ever possible to ensure that the overhead of logging is kept to a minimum
 
-* **Flexible** - support for multiple logging backends via adapters, with support for custom adapters
+- [x] **Flexible** - support for different logger backends, including a mux to send simultaneously to multiple, independently configured transports
 
-* **Convenient** - a simple, consistent and familiar API that is easy and intuitive to use
+- [x] **Convenient** - a simple, consistent and familiar API that is easy and intuitive to use
 
-* **Testable** - the `ulog.Logger` interface is easy to mock and test with a configurable log mock that can be used to verify that correct logs are emitted by your code; build log expectations into a TDD workflow!
+- [x] **Testable** - use the provided mock logger to verify that the logs expected by your observability alerts are actually produced!
 
-* **Extendable** - extend the reach of your logging into modules shared by your projects, providing automatic context enrichment and consistent logging across your codebase; other `blugnu` modules either already have built-in support for `ulog` or will be extended to support it
 
 ## Installation
 

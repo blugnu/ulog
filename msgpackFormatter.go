@@ -1,7 +1,11 @@
 package ulog
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
+	"reflect"
+	"strings"
 	"sync"
 
 	"github.com/blugnu/msgpack"
@@ -96,6 +100,10 @@ func (fmt *msgpackfmt) Format(id int, e entry, b ByteWriter) {
 	_ = enc.Using(fbb, func() error {
 		for k, v := range e.fields.m {
 			_ = enc.EncodeString(k)
+			if reflect.ValueOf(v).Kind() == reflect.Struct {
+				fmt.writeStruct(enc, v)
+				continue
+			}
 			_ = enc.Encode(v)
 		}
 		return enc.Err()
@@ -104,4 +112,32 @@ func (fmt *msgpackfmt) Format(id int, e entry, b ByteWriter) {
 	e.fields.setFormattedBytes(id, fb)
 
 	_ = enc.Write(fb)
+}
+
+func (fmt *msgpackfmt) writeMap(enc *msgpack.Encoder, m map[string]any) {
+	_ = enc.WriteMapHeader(len(m))
+	for k, v := range m {
+		_ = enc.EncodeString(strings.ToLower(k))
+		if m, ok := v.(map[string]any); ok {
+			fmt.writeMap(enc, m)
+			continue
+		}
+		_ = enc.Encode(v)
+
+	}
+}
+
+func (msg *msgpackfmt) writeStruct(enc *msgpack.Encoder, v any) {
+	j, err := jsonMarshal(v)
+	if err != nil {
+		_ = enc.EncodeString(fmt.Sprintf("LOGFMT_ERROR: marshalling error: %v", err))
+		return
+	}
+
+	// unmarshal the json into a map (no need to check for errors; we are
+	// unmarshalling marshalled JSON, it cannot be invalid)
+	var m map[string]any
+	_ = json.Unmarshal(j, &m)
+
+	msg.writeMap(enc, m)
 }
