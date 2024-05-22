@@ -59,7 +59,7 @@ func (h *logtailBatchHandler) configure(key cfgkey, value any) error {
 
 // send sends a batch of entries to the BetterStack Logs service.
 func (h *logtailBatchHandler) send(batch *Batch) error {
-	tracef("logtail.send: sending %d entries", batch.len)
+	tracef("logtail: send: sending %d entries", batch.len)
 
 	buf := h.buf.Get().(*bytes.Buffer)
 	buf.Reset()
@@ -67,11 +67,11 @@ func (h *logtailBatchHandler) send(batch *Batch) error {
 	// encodeBatch is a function ref to enable testing of an encoding
 	// error by replacing the func with a mock
 	if err := h.encodeBatch(buf, batch); err != nil {
-		tracef("logtail.send: batch encoding failed: %s", err)
+		trace("logtail: send: batch encoding failed: " + err.Error())
 		return err
 	}
 
-	trace("sending: ", buf.String())
+	trace("logtail: sending: ", buf.String())
 
 	body := bytes.NewReader(buf.Bytes())
 
@@ -80,7 +80,7 @@ func (h *logtailBatchHandler) send(batch *Batch) error {
 	}
 	rq, err := http.NewRequest(http.MethodPost, h.endpoint, body)
 	if err != nil {
-		tracef("logtail.send: error initialising request: %s", err)
+		trace("logtail: send: error initialising request: " + err.Error())
 		return err
 	}
 
@@ -88,11 +88,11 @@ func (h *logtailBatchHandler) send(batch *Batch) error {
 	rq.Header.Add("Content-Type", "application/msgpack")
 	rw, err := client.Do(rq)
 	if err != nil {
-		tracef("logtail.send: error sending request: %s", err)
+		trace("logtail: send: error sending request: " + err.Error())
 		return err
 	}
 
-	tracef("logtail.send: result: %d", rw.Status)
+	trace("logtail: send: result: " + rw.Status)
 
 	return nil
 }

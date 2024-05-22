@@ -56,7 +56,7 @@ func (t *logtail) log(b []byte) {
 
 // stop closes the channel over which log entries are received.
 func (t *logtail) stop() {
-	trace("logtail transport requested to stop...")
+	trace("logtail: transport requested to stop...")
 	close(t.ch)
 }
 
@@ -78,7 +78,7 @@ loop:
 		select {
 		case entry := <-t.ch:
 			if len(entry) == 0 {
-				trace("logtail transport stopping...")
+				trace("logtail: transport stopping...")
 				batch.flush()
 				break loop
 			}
@@ -87,5 +87,5 @@ loop:
 			batch.flush()
 		}
 	}
-	trace("logtail transport stopped")
+	trace("logtail: transport stopped")
 }
