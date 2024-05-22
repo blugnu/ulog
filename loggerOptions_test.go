@@ -8,6 +8,18 @@ import (
 	"github.com/blugnu/test"
 )
 
+// LoggerBackend returns a function that sets the backend of a logger.
+//
+// This option is only for use in tests when replacing the default
+// stdio backend with a backend implementation with behaviour required
+// to exercise specific test scenarios.
+func LoggerBackend(t dispatcher) LoggerOption {
+	return func(l *logger) error {
+		l.backend = t
+		return nil
+	}
+}
+
 func TestLoggerOptions(t *testing.T) {
 	// ARRANGE
 	testcases := []struct {

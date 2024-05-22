@@ -15,9 +15,8 @@ import (
 // by that Logger to configure and test expectations.
 func NewMock() (Logger, MockLog) {
 	mock := &mock{}
-	logger := &logger{}
+	logger := &logger{backend: mock}
 	ic, _ := logger.init(context.Background(),
-		LoggerBackend(mock),
 		LoggerLevel(TraceLevel),
 	)
 	return ic, mock

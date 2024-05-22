@@ -250,13 +250,13 @@ func TestLogContext_Logging(t *testing.T) {
 	var (
 		ctx    = context.Background()
 		mock   = &mockdispatcher{}
-		logger = &logger{}
+		logger = &logger{backend: mock}
 		et     = time.Date(2010, 9, 8, 7, 6, 5, 432100, time.UTC)
 
 		closeWasCalled = false
 		exitWasCalled  = false
 	)
-	sut, _ := logger.init(ctx, LoggerBackend(mock))
+	sut, _ := logger.init(ctx)
 	logger.closeFn = func() { closeWasCalled = true }
 
 	ognow := now

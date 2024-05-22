@@ -8,14 +8,6 @@ import (
 
 type FormatterFactory = func() (Formatter, error) // FormatterFactory is a function that returns a new Formatter
 
-// LoggerBackend returns a function that sets the backend of a logger
-func LoggerBackend(t dispatcher) LoggerOption {
-	return func(l *logger) error {
-		l.backend = t
-		return nil
-	}
-}
-
 // LogCallsite returns a function that sets whether or not call site
 // information is included in logs produced by a logger
 func LogCallsite(e bool) LoggerOption {
@@ -68,9 +60,6 @@ func LoggerLevel(level Level) LoggerOption {
 
 // LoggerOutput sets the io.Writer of a logger.  This configuration option
 // only makes sense for a non-muxing logger.
-//
-// If configured without a backend, a stdio backend will be configured
-// using a default logfmt formatter and the supplied io.Writer.
 //
 // Returns ErrInvalidConfiguration error if configured on a mux logger.
 func LoggerOutput(out io.Writer) LoggerOption {
