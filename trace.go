@@ -11,9 +11,11 @@ var (
 	tracef  = func(s string, a ...any) { traceFn(fmt.Sprintf(s, a...)) }
 )
 
-func EnableTrace() {
-	traceFn = func(a ...any) {
-		a = append([]any{"[ulog trace]"}, a...)
-		log.Println(a...)
+func EnableTraceLogs(fn func(...any)) {
+	if traceFn = fn; fn == nil {
+		traceFn = func(a ...any) {
+			a = append([]any{"ULOG:TRACE"}, a...)
+			log.Println(a...)
+		}
 	}
 }

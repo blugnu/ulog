@@ -202,7 +202,7 @@ func TestMux(t *testing.T) {
 }
 
 func TestLogtailMux(t *testing.T) {
-	ulog.EnableTrace()
+	ulog.EnableTraceLogs(nil)
 	logger, closelog, _ := ulog.NewLogger(
 		context.Background(),
 		ulog.Mux(

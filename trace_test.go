@@ -1,6 +1,7 @@
 package ulog
 
 import (
+	"context"
 	"testing"
 
 	"github.com/blugnu/test"
@@ -10,7 +11,7 @@ func TestDebug(t *testing.T) {
 	t.Run("no-op by default", func(t *testing.T) {
 		// ACT
 		_, stderr := test.CaptureOutput(t, func() {
-			trace("foo")
+			trace(context.Background(), "foo")
 		})
 
 		// ASSERT
@@ -23,12 +24,12 @@ func TestDebug(t *testing.T) {
 		defer func() { traceFn = og }()
 
 		// ACT
-		EnableTrace()
+		EnableTraceLogs(nil)
 		_, stderr := test.CaptureOutput(t, func() {
 			trace("foo")
 		})
 
 		// ASSERT
-		stderr.Contains("[ulog trace] foo")
+		stderr.Contains("ULOG:TRACE foo")
 	})
 }
