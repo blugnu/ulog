@@ -129,7 +129,8 @@ func (w *logfmt) Format(id int, e entry, b ByteWriter) {
 
 func (w *logfmt) writeFields(buf ByteWriter, f *fields) {
 	for k, v := range f.m {
-		if reflect.ValueOf(v).Kind() == reflect.Struct {
+		if reflect.ValueOf(v).Kind() == reflect.Struct ||
+			(reflect.ValueOf(v).Kind() == reflect.Ptr && reflect.ValueOf(v).Elem().Kind() == reflect.Struct) {
 			w.writeStruct(buf, k, v)
 			continue
 		}

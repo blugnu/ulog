@@ -148,6 +148,25 @@ func TestMsgpackFormatter(t *testing.T) {
 							test.That(t, buf.String()).Equals(string(packedBytes(0x84, 0xa9, "timestamp", tsb, 0xa5, "level", 0xa4, "info", 0xa7, "message", 0xa5, "entry", 0xa6, "struct", 0x81, 0xa5, "field", 0xa5, "value")))
 						},
 					},
+					{scenario: "*struct field",
+						exec: func(t *testing.T) {
+							// ARRANGE
+							e.logcontext = &logcontext{
+								fields: &fields{
+									mutex: mx,
+									m:     map[string]any{"struct": &struct{ Field string }{"value"}},
+									b:     map[int][]byte{},
+								},
+							}
+
+							// ACT
+							sut.Format(0, e, buf)
+
+							// ASSERT
+							IsSyncSafe(t, false, mx)
+							test.That(t, buf.String()).Equals(string(packedBytes(0x84, 0xa9, "timestamp", tsb, 0xa5, "level", 0xa4, "info", 0xa7, "message", 0xa5, "entry", 0xa6, "struct", 0x81, 0xa5, "field", 0xa5, "value")))
+						},
+					},
 					{scenario: "nested structs",
 						exec: func(t *testing.T) {
 							// ARRANGE

@@ -456,6 +456,38 @@ func TestLogfmtFormatter(t *testing.T) {
 				IsSyncSafe(t, false, mx)
 			},
 		},
+		{scenario: "*struct field",
+			exec: func(t *testing.T) {
+				// ACT
+				sut.Format(0, entry{
+					logcontext: &logcontext{
+						fields: &fields{
+							mutex: mx,
+							m: map[string]any{
+								"key": &struct {
+									False    bool
+									True     bool
+									Duration time.Duration
+									String   string
+									Int      int
+									Struct   struct {
+										Sub string
+									}
+								}{false, true, 1 * time.Nanosecond, "value", 42, struct{ Sub string }{"sub"}},
+							},
+							b: map[int][]byte{},
+						},
+					},
+					Time:    tm,
+					Level:   InfoLevel,
+					Message: "message",
+				}, buf)
+
+				// ASSERT
+				test.That(t, buf.String()).Equals("time=2010-09-08T07:06:05.432100Z level=INFO  message=\"message\" key.duration=1 key.false=false key.int=42 key.string=\"value\" key.struct.sub=\"sub\" key.true=true")
+				IsSyncSafe(t, false, mx)
+			},
+		},
 	}
 	for _, tc := range testcases {
 		t.Run(tc.scenario, func(t *testing.T) {
