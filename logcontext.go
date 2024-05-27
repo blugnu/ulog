@@ -83,7 +83,15 @@ func (lc *logcontext) makeEntryf(level Level, s string, args ...any) entry {
 
 // new returns a new logcontext.
 func (lc *logcontext) new(ctx context.Context, d dispatcher, xf map[string]any, ex int) *logcontext {
-	return &logcontext{ctx, lc.fields, lc.logger, d, xf, ex}
+	nxf := lc.xfields
+	if nxf != nil {
+		for k, v := range xf {
+			nxf[k] = v
+		}
+	} else {
+		nxf = xf
+	}
+	return &logcontext{ctx, lc.fields, lc.logger, d, nxf, ex}
 }
 
 // Log emits a log entry of a specified level to the log.
@@ -174,7 +182,7 @@ func (lc *logcontext) Warnf(format string, args ...any) {
 // Error emits an error or string as an Error level entry to the log.
 //
 // If logging an error wrapping a specific context then the error is
-// logged using an entry  enriched with any information in the error context.
+// logged using an entry enriched with any information in the error context.
 //
 // If logging a string then the string is logged as-is.
 //

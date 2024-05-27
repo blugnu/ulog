@@ -11,6 +11,10 @@ import (
 	"github.com/blugnu/test"
 )
 
+func (lc *logcontext) String() string {
+	return fmt.Sprintf("ctx=%v, logger=%v, dispatcher=%v, xfields=%v, exitCode=%v", lc.ctx, lc.logger, lc.dispatcher, lc.xfields, lc.exitCode)
+}
+
 func TestLogContext(t *testing.T) {
 	// ARRANGE
 	type key int
@@ -105,6 +109,27 @@ func TestLogContext(t *testing.T) {
 					dispatcher: sut.dispatcher,
 					xfields:    map[string]any{"key": "value"},
 					exitCode:   42,
+				})
+			},
+		},
+		{scenario: "new/adds to existing fields",
+			exec: func(t *testing.T) {
+				// ARRANGE
+				sut.xfields = map[string]any{"key": "value"}
+
+				// ACT
+				result := sut.new(ctx, sut.dispatcher, map[string]any{"key-1": "value"}, 42)
+
+				// ASSERT
+				test.That(t, result).Equals(&logcontext{
+					ctx:        ctx,
+					logger:     sut.logger,
+					dispatcher: sut.dispatcher,
+					xfields: map[string]any{
+						"key":   "value",
+						"key-1": "value",
+					},
+					exitCode: 42,
 				})
 			},
 		},
