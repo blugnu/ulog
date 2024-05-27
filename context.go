@@ -2,17 +2,6 @@ package ulog
 
 import "context"
 
-// determines the behaviour of ulog.FromContext() when no logger is
-// present in the supplied context and the caller did not explicitly
-// request a logger:
-//
-//   - if false, then a no-op logger will be returned
-//
-//   - if true, then a panic(ErrNoContextInLogger) will occur
-//
-// FIXME: this cannot work and should be removed or reworked; currently, if different modules using ulog configure different behaviour at least one of them will get something they don't want!
-var ContextLoggerRequired bool
-
 type key int
 type ContextLoggerOption int
 
@@ -21,14 +10,13 @@ const Required = ContextLoggerOption(1)
 
 // returns any logger present in the supplied Context.
 //
-// The result if no logger is present in the context depends on any
-// ContextLoggerOption supplied and the value of ContextLoggerRequired:
+// The result if no logger is present in the context depends on whether
+// a ContextLoggerOption is supplied:
 //
-//   - if ContextLoggerRequired is false and no ContextLoggerOption is
-//     specified, a no-op logger is returned
+//   - if called with ulog.Required and no logger is present, a panic
+//     will occur (ErrNoLoggerInContext)
 //
-//   - if ContextLoggerRequired is true or the ContextLoggerOption is
-//     Required, a panic(ErrNoLoggerInContext) will occur
+//   - if not called with ulog.Required, a no-op logger will be returned
 //
 // Example:
 //
@@ -37,7 +25,7 @@ func FromContext(ctx context.Context, opt ...ContextLoggerOption) Logger {
 	if lg := ctx.Value(loggerKey); lg != nil {
 		return lg.(Logger).WithContext(ctx)
 	}
-	if ContextLoggerRequired || len(opt) > 0 && opt[0] == Required {
+	if len(opt) > 0 && opt[0] == Required {
 		panic(ErrNoLoggerInContext)
 	}
 	return noop.logger

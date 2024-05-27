@@ -25,14 +25,9 @@ func TestFromContext(t *testing.T) {
 		scenario string
 		exec     func(t *testing.T)
 	}{
-		{scenario: "FromContext()/no logger in context/ContextLoggerRequired=false",
+		{scenario: "FromContext()/no logger in context",
 			exec: func(t *testing.T) {
 				// ARRANGE
-				og := ContextLoggerRequired
-				defer func() { ContextLoggerRequired = og }()
-
-				ContextLoggerRequired = false
-
 				// ACT
 				result := FromContext(ctx)
 
@@ -40,42 +35,9 @@ func TestFromContext(t *testing.T) {
 				test.That(t, result).Equals(noop.logger)
 			},
 		},
-		{scenario: "FromContext(Required)/no logger in context/ContextLoggerRequired=false",
+		{scenario: "FromContext(Required)/no logger in context",
 			exec: func(t *testing.T) {
 				// ARRANGE
-				og := ContextLoggerRequired
-				defer func() { ContextLoggerRequired = og }()
-
-				ContextLoggerRequired = false
-
-				defer test.ExpectPanic(ErrNoLoggerInContext).Assert(t)
-
-				// ACT
-				_ = FromContext(ctx, Required)
-			},
-		},
-		{scenario: "FromContext()/no logger in context/ContextLoggerRequired=true",
-			exec: func(t *testing.T) {
-				// ARRANGE
-				og := ContextLoggerRequired
-				defer func() { ContextLoggerRequired = og }()
-
-				ContextLoggerRequired = true
-
-				defer test.ExpectPanic(ErrNoLoggerInContext).Assert(t)
-
-				// ACT
-				_ = FromContext(ctx)
-			},
-		},
-		{scenario: "FromContext(Required)/no logger in context/ContextLoggerRequired=true",
-			exec: func(t *testing.T) {
-				// ARRANGE
-				og := ContextLoggerRequired
-				defer func() { ContextLoggerRequired = og }()
-
-				ContextLoggerRequired = true
-
 				defer test.ExpectPanic(ErrNoLoggerInContext).Assert(t)
 
 				// ACT
