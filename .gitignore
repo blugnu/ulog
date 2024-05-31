@@ -18,5 +18,4 @@
 go.work
 
 # temporary
-.msgpack
-.logtail
+**/*.token
