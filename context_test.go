@@ -25,9 +25,8 @@ func TestFromContext(t *testing.T) {
 		scenario string
 		exec     func(t *testing.T)
 	}{
-		{scenario: "FromContext()/no logger in context",
+		{scenario: "FromContext()/no logger",
 			exec: func(t *testing.T) {
-				// ARRANGE
 				// ACT
 				result := FromContext(ctx)
 
@@ -35,13 +34,31 @@ func TestFromContext(t *testing.T) {
 				test.That(t, result).Equals(noop.logger)
 			},
 		},
-		{scenario: "FromContext(Required)/no logger in context",
+		{scenario: "FromContext()/no logger/NoopIfNotPresent",
 			exec: func(t *testing.T) {
-				// ARRANGE
+				// ACT
+				result := FromContext(ctx, NoopIfNotPresent)
+
+				// ASSERT
+				test.That(t, result).Equals(noop.logger)
+			},
+		},
+		{scenario: "FromContext/no logger/PanicIfNotPresent",
+			exec: func(t *testing.T) {
+				// ARRANGE ASSERT
 				defer test.ExpectPanic(ErrNoLoggerInContext).Assert(t)
 
 				// ACT
-				_ = FromContext(ctx, Required)
+				_ = FromContext(ctx, PanicIfNotPresent)
+			},
+		},
+		{scenario: "FromContext/no logger/NilIfNotPresent",
+			exec: func(t *testing.T) {
+				// ACT
+				result := FromContext(ctx, NilIfNotPresent)
+
+				// ASSERT
+				test.That(t, result).IsNil()
 			},
 		},
 		{scenario: "FromContext()/logger in context",

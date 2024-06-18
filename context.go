@@ -3,20 +3,60 @@ package ulog
 import "context"
 
 type key int
-type ContextLoggerOption int
 
 const loggerKey = key(1)
-const Required = ContextLoggerOption(1)
 
-// returns any logger present in the supplied Context.
+// ContextLoggerOption values determine the behaviour of ulog.FromContext
+// when no logger is present in the context.
 //
-// The result if no logger is present in the context depends on whether
-// a ContextLoggerOption is supplied:
+// # Values
 //
-//   - if called with ulog.Required and no logger is present, a panic
-//     will occur (ErrNoLoggerInContext)
+//	NoopIfNotPresent    // a no-op logger will be returned
 //
-//   - if not called with ulog.Required, a no-op logger will be returned
+//	PanicIfNotPresent   // a panic will occur (ErrNoLoggerInContext)
+//
+//	NilIfNotPresent     // nil will be returned
+type ContextLoggerOption int
+
+const (
+	// NoopIfNotPresent is a ContextLoggerOption that specifies that if no logger is
+	// present in the context, a no-op logger should be returned; this is also
+	// the default behavior if no ContextLoggerOption is supplied.
+	//
+	// The caller can safely emit logs without checking for the presence
+	// of a logger.
+	NoopIfNotPresent = ContextLoggerOption(0)
+
+	// PanicIfNotPresent is a ContextLoggerOption that specifies that if no logger is
+	// present in the context, a panic should occur (ErrNoLoggerInContext).
+	PanicIfNotPresent = ContextLoggerOption(1)
+
+	// NilIfNotPresent is a ContextLoggerOption that specifies that if no logger is
+	// present in the context, nil should be returned.  It is then the
+	// responsibility of the caller to handle the absence of a logger.
+	NilIfNotPresent = ContextLoggerOption(2)
+)
+
+// Required is equivalent to PanicIfNotPresent.
+//
+// Deprecated: new code should use PanicIfNotPresent.
+const Required = PanicIfNotPresent
+
+// FromContext returns any logger present in the supplied Context.
+// The result if no logger is present in the context depends on the
+// value of the (optional) ContextLoggerOption supplied:
+//
+//	NoopIfNotPresent    // a no-op logger will be returned
+//
+//	PanicIfNotPresent   // a panic will occur (ErrNoLoggerInContext)
+//
+//	NilIfNotPresent     // nil will be returned
+//
+// 0, 1 or many ContextLoggerOption values may be specified:
+//
+//	0       // NoopIfNotPresent is assumed
+//	1       // the specified option is applied
+//	>1      // the first specified option is applied
 //
 // Example:
 //
@@ -25,10 +65,20 @@ func FromContext(ctx context.Context, opt ...ContextLoggerOption) Logger {
 	if lg := ctx.Value(loggerKey); lg != nil {
 		return lg.(Logger).WithContext(ctx)
 	}
-	if len(opt) > 0 && opt[0] == Required {
-		panic(ErrNoLoggerInContext)
+
+	def := NoopIfNotPresent
+	if len(opt) > 0 {
+		def = opt[0]
 	}
-	return noop.logger
+
+	switch def {
+	case PanicIfNotPresent:
+		panic(ErrNoLoggerInContext)
+	case NilIfNotPresent:
+		return nil
+	default:
+		return noop.logger
+	}
 }
 
 // returns a new context with the supplied logger added to it.

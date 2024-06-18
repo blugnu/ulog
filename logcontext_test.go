@@ -12,7 +12,7 @@ import (
 )
 
 func (lc *logcontext) String() string {
-	return fmt.Sprintf("ctx=%v, logger=%v, dispatcher=%v, xfields=%v, exitCode=%v", lc.ctx, lc.logger, lc.dispatcher, lc.xfields, lc.exitCode)
+	return fmt.Sprintf("ctx=%v, logger=%v, dispatcher=%v, fields=%v, xfields=%v, exitCode=%v", lc.ctx, lc.logger, lc.dispatcher, lc.fields, lc.xfields, lc.exitCode)
 }
 
 func TestLogContext(t *testing.T) {
@@ -229,6 +229,21 @@ func TestLogContext(t *testing.T) {
 				})
 			},
 		},
+		{scenario: "WithField/logcontext fields are merged uniquely",
+			exec: func(t *testing.T) {
+				// ACT
+				result1 := sut.WithField("key1", "value1").(*logcontext)
+				result1.Info("log")
+				result2 := sut.WithField("key2", "value2").(*logcontext)
+				result2.Info("log")
+
+				// ASSERT
+				test.That(t, result1.fields.m).Equals(map[string]any{"key1": "value1"})
+				test.That(t, result1.xfields).IsNil()
+				test.That(t, result2.fields.m).Equals(map[string]any{"key2": "value2"})
+				test.That(t, result2.xfields).IsNil()
+			},
+		},
 
 		// WithFields tests
 		{scenario: "WithFields",
@@ -260,6 +275,7 @@ func TestLogContext(t *testing.T) {
 					Level:       InfoLevel,
 					enabled:     sut.isLevelEnabled,
 					getCallsite: noCaller,
+					backend:     noop,
 				},
 			}
 			sut.logger.enrich = sut.logger.noEnrichment // TODO: this is horrible - can this be refactored to avoid it?  a nil receiver method maybe?

@@ -18,6 +18,10 @@ var noop = &noopimpl{
 	entry: entry{noop: true},
 }
 
+// dispatch implements a no-op dispatch method allowing noop to
+// be used as a dispatcher.
+func (*noopimpl) dispatch(entry) { /* NO-OP */ }
+
 // Close implements a no-op Close method.
 func (*noopimpl) Close() { /* NO-OP */ }
 
