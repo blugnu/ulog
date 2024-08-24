@@ -10,7 +10,7 @@ import (
 	"github.com/blugnu/test"
 )
 
-func TestNewJsonFormatter(t *testing.T) {
+func TestJSONFormatter(t *testing.T) {
 	// ARRANGE
 	def := &jsonfmt{
 		keys: [numFields]string{
@@ -37,7 +37,7 @@ func TestNewJsonFormatter(t *testing.T) {
 		{scenario: "with no options",
 			exec: func(t *testing.T) {
 				// ACT
-				result, err := NewJSONFormatter()()
+				result, err := JSONFormatter()()
 
 				// ASSERT
 				test.That(t, result.(*jsonfmt)).Equals(def)
@@ -50,7 +50,7 @@ func TestNewJsonFormatter(t *testing.T) {
 				optWasApplied := false
 
 				// ACT
-				result, err := NewJSONFormatter(func(*jsonfmt) error { optWasApplied = true; return nil })()
+				result, err := JSONFormatter(func(*jsonfmt) error { optWasApplied = true; return nil })()
 
 				// ASSERT
 				test.That(t, result.(*jsonfmt)).Equals(def)
@@ -64,7 +64,7 @@ func TestNewJsonFormatter(t *testing.T) {
 				opterr := errors.New("option error")
 
 				// ACT
-				result, err := NewJSONFormatter(func(*jsonfmt) error { return opterr })()
+				result, err := JSONFormatter(func(*jsonfmt) error { return opterr })()
 
 				// ASSERT
 				test.That(t, result).IsNil()
@@ -79,14 +79,14 @@ func TestNewJsonFormatter(t *testing.T) {
 	}
 }
 
-func TestJsonFormatter(t *testing.T) {
+func TestJSONFormatter_Format(t *testing.T) {
 	// ARRANGE
 	var (
-		mx   = &mockmutex{}
-		tm   = time.Date(2010, 9, 8, 7, 6, 5, 432100000, time.UTC)
-		e    = entry{}
-		sut  = JSONFormatter
-		dest = bytes.NewBuffer([]byte{})
+		mx     = &mockmutex{}
+		tm     = time.Date(2010, 9, 8, 7, 6, 5, 432100000, time.UTC)
+		e      = entry{}
+		sut, _ = JSONFormatter()()
+		dest   = bytes.NewBuffer([]byte{})
 	)
 
 	testcases := []struct {
@@ -103,6 +103,7 @@ func TestJsonFormatter(t *testing.T) {
 				sut.Format(0, e, dest)
 
 				// ASSERT
+				test.That(t, dest.String()).Equals(`{"level":"info","message":"message","time":"2010-09-08T07:06:05.4321Z"}`)
 				_ = json.Unmarshal([]byte(`{"time":"2010-09-08T07:06:05.4321Z","level":"info","message":"message"}`), &wanted)
 				_ = json.Unmarshal(dest.Bytes(), &got)
 				test.Map(t, got).Equals(wanted)
@@ -125,6 +126,7 @@ func TestJsonFormatter(t *testing.T) {
 				sut.Format(0, e, dest)
 
 				// ASSERT
+				test.That(t, dest.String()).Equals(`{"ikey":99,"level":"info","message":"message","time":"2010-09-08T07:06:05.4321Z"}`)
 				_ = json.Unmarshal([]byte(`{"time":"2010-09-08T07:06:05.4321Z","level":"info","message":"message","ikey":99}`), &wanted)
 				_ = json.Unmarshal(dest.Bytes(), &got)
 				test.Map(t, got).Equals(wanted)
@@ -147,6 +149,7 @@ func TestJsonFormatter(t *testing.T) {
 				sut.Format(0, e, dest)
 
 				// ASSERT
+				test.That(t, dest.String()).Equals(`{"key":"value","level":"info","message":"message","time":"2010-09-08T07:06:05.4321Z"}`)
 				_ = json.Unmarshal([]byte(`{"time":"2010-09-08T07:06:05.4321Z","level":"info","message":"message","key":"value"}`), &wanted)
 				_ = json.Unmarshal(dest.Bytes(), &got)
 				test.Map(t, got).Equals(wanted)
@@ -169,6 +172,7 @@ func TestJsonFormatter(t *testing.T) {
 				sut.Format(0, e, dest)
 
 				// ASSERT
+				test.That(t, dest.String()).Equals(`{"key":true,"level":"info","message":"message","time":"2010-09-08T07:06:05.4321Z"}`)
 				_ = json.Unmarshal([]byte(`{"time":"2010-09-08T07:06:05.4321Z","level":"info","message":"message","key":true}`), &wanted)
 				_ = json.Unmarshal(dest.Bytes(), &got)
 				test.Map(t, got).Equals(wanted)
@@ -195,6 +199,7 @@ func TestJsonFormatter(t *testing.T) {
 				sut.Format(0, e, dest)
 
 				// ASSERT
+				test.That(t, dest.String()).Equals(`{"key":{"A":1,"B":"two"},"level":"info","message":"message","time":"2010-09-08T07:06:05.4321Z"}`)
 				_ = json.Unmarshal([]byte(`{"time":"2010-09-08T07:06:05.4321Z","level":"info","message":"message","key":{"A":1,"B":"two"}}`), &wanted)
 				_ = json.Unmarshal(dest.Bytes(), &got)
 				test.Map(t, got).Equals(wanted)
@@ -221,7 +226,32 @@ func TestJsonFormatter(t *testing.T) {
 				sut.Format(0, e, dest)
 
 				// ASSERT
+				test.That(t, dest.String()).Equals(`{"key":{"A":1,"B":"two"},"level":"info","message":"message","time":"2010-09-08T07:06:05.4321Z"}`)
 				_ = json.Unmarshal([]byte(`{"time":"2010-09-08T07:06:05.4321Z","level":"info","message":"message","key":{"A":1,"B":"two"}}`), &wanted)
+				_ = json.Unmarshal(dest.Bytes(), &got)
+				test.Map(t, got).Equals(wanted)
+			},
+		},
+		{scenario: "error field",
+			exec: func(t *testing.T) {
+				// ARRANGE
+				err := errors.New("an error")
+				e.logcontext = &logcontext{
+					fields: &fields{
+						mutex: mx,
+						m:     map[string]any{"error": err},
+						b:     map[int][]byte{},
+					},
+				}
+				wanted := map[string]any{}
+				got := map[string]any{}
+
+				// ACT
+				sut.Format(0, e, dest)
+
+				// ASSERT
+				test.That(t, dest.String()).Equals(`{"error":"an error","level":"info","message":"message","time":"2010-09-08T07:06:05.4321Z"}`)
+				_ = json.Unmarshal([]byte(`{"time":"2010-09-08T07:06:05.4321Z","level":"info","message":"message","error":"an error"}`), &wanted)
 				_ = json.Unmarshal(dest.Bytes(), &got)
 				test.Map(t, got).Equals(wanted)
 			},

@@ -1,14 +1,15 @@
 package ulog
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 )
 
-type JsonFormatterOption func(*jsonfmt) error // JsonFormatterOption is a function for configuring a json formatter
+type JSONFormatterOption func(*jsonfmt) error // a function for configuring a json formatter
 
 // NewJSONFormatter returns a function that configures a json formatter.
-func NewJSONFormatter(opt ...JsonFormatterOption) FormatterFactory {
+func JSONFormatter(opt ...JSONFormatterOption) FormatterFactory {
 	return func() (Formatter, error) {
 		mf := &jsonfmt{
 			keys: [numFields]string{
@@ -40,8 +41,6 @@ func NewJSONFormatter(opt ...JsonFormatterOption) FormatterFactory {
 	}
 }
 
-var JSONFormatter, _ = NewJSONFormatter()()
-
 type jsonfmt struct {
 	keys   [numFields]string
 	levels [numLevels]string
@@ -57,9 +56,16 @@ func (w *jsonfmt) Format(id int, e entry, b ByteWriter) {
 
 	if e.fields != nil {
 		for k, v := range e.fields.m {
+			if err, ok := v.(error); ok {
+				v = err.Error()
+			}
 			entry[k] = v
 		}
 	}
-	enc := json.NewEncoder(b)
+
+	// json encoder appends a trailing \n which we do not want
+	jb := bytes.NewBuffer(nil)
+	enc := json.NewEncoder(jb)
 	_ = enc.Encode(entry)
+	_, _ = b.Write(jb.Bytes()[0 : jb.Len()-1])
 }
