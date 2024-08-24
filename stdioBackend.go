@@ -35,7 +35,7 @@ func newStdioBackend(f Formatter, w io.Writer) *stdioBackend {
 }
 
 // dispatch satisfies the backend interface, formatting each log entry
-// and writing it to the configured io.Writer.
+// and writing it to the configured io.Writer, appending char.newline.
 func (stdio *stdioBackend) dispatch(e entry) {
 	buf := stdio.bufs.Get().(*bytes.Buffer)
 	defer stdio.bufs.Put(buf)
