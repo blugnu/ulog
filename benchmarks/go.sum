@@ -1,5 +1,9 @@
-github.com/blugnu/errorcontext v0.2.1 h1:Fbgy7nhxESgsOcFxc76JD+1fmXAUTC2knnY5QpfR15Y=
-github.com/blugnu/errorcontext v0.2.1/go.mod h1:GQrJknpQOj6B5+1Qm+woo11KAU9QI2DaojBvA57LRi8=
+github.com/blugnu/errorcontext v0.2.2 h1:TqFPGb0pdNWtACxvbLqqzD8fzZAoa2uXdjohgk8RRwU=
+github.com/blugnu/errorcontext v0.2.2/go.mod h1:4tMqaqNkRxLrL9d8EwWKZBbJMV+Zd8GLu+0Ih+QY3Ac=
+github.com/blugnu/msgpack v0.2.1 h1:6ow2AI8/k/H0DV7OE5BbaJHVoL2uRloZmJNS0YEGb54=
+github.com/blugnu/msgpack v0.2.1/go.mod h1:MiypHlTGVfNLKlU0xaroQFLhuOwwftIYb7YA12/ALEc=
+github.com/blugnu/test v0.5.0 h1:2Rn8DRfRez9XUb4P0f88N7a5WYZwzK8dLwAEcJOTp2g=
+github.com/blugnu/test v0.5.0/go.mod h1:bONOZa4Ep3+OFpyJ45tL157qQCK1vPAhOTN53VnMmM8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

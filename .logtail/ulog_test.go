@@ -47,7 +47,7 @@ func newUlogLogFmt(level ulog.Level, opt ...ulog.LoggerOption) (ulog.Logger, ulo
 	return logger, cfn
 }
 
-func newUlogJson(level ulog.Level) (ulog.Logger, ulog.CloseFn) {
+func newUlogJSON(level ulog.Level) (ulog.Logger, ulog.CloseFn) {
 	logger, cfn, _ := ulog.NewLogger(context.Background(),
 		ulog.LoggerLevel(level),
 		ulog.LoggerFormat(ulog.NewJSONFormatter()),

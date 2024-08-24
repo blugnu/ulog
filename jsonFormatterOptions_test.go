@@ -6,7 +6,7 @@ import (
 	"github.com/blugnu/test"
 )
 
-func TestJsonFormatterOptions(t *testing.T) {
+func TestJSONFormatterOptions(t *testing.T) {
 	// ARRANGE
 	testcases := []struct {
 		scenario string
@@ -16,7 +16,7 @@ func TestJsonFormatterOptions(t *testing.T) {
 		{scenario: "JSONFieldNames/override one field",
 			exec: func(t *testing.T) {
 				// ARRANGE
-				f, _ := NewJSONFormatter()()
+				f, _ := JSONFormatter()()
 
 				// ACT
 				err := JSONFieldNames(map[FieldId]string{TimeField: "tm"})(f.(*jsonfmt))
@@ -35,7 +35,7 @@ func TestJsonFormatterOptions(t *testing.T) {
 		{scenario: "JSONFieldNames/override all fields",
 			exec: func(t *testing.T) {
 				// ARRANGE
-				f, _ := NewJSONFormatter()()
+				f, _ := JSONFormatter()()
 
 				// ACT
 				err := JSONFieldNames(map[FieldId]string{
@@ -62,7 +62,7 @@ func TestJsonFormatterOptions(t *testing.T) {
 		{scenario: "JSONLevelLabels/override one level",
 			exec: func(t *testing.T) {
 				// ARRANGE
-				f, _ := NewJSONFormatter()()
+				f, _ := JSONFormatter()()
 
 				// ACT
 				err := JSONLevelLabels(map[Level]string{TraceLevel: "TRACE"})(f.(*jsonfmt))
@@ -82,7 +82,7 @@ func TestJsonFormatterOptions(t *testing.T) {
 		{scenario: "JSONLevelLabels/override all levels",
 			exec: func(t *testing.T) {
 				// ARRANGE
-				f, _ := NewJSONFormatter()()
+				f, _ := JSONFormatter()()
 
 				// ACT
 				err := JSONLevelLabels(map[Level]string{

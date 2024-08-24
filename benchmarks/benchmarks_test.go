@@ -79,7 +79,7 @@ func BenchmarkDisabledWithoutFields(b *testing.B) {
 	}
 
 	b.Run("blugnu/ulog-json", func(b *testing.B) {
-		logger, cfn := newUlogJson(ulog.ErrorLevel)
+		logger, cfn := newUlogJSON(ulog.ErrorLevel)
 		defer cfn()
 
 		b.ResetTimer()
@@ -90,7 +90,7 @@ func BenchmarkDisabledWithoutFields(b *testing.B) {
 		})
 	})
 	b.Run("blugnu/ulog-json-with-args", func(b *testing.B) {
-		logger, cfn := newUlogJson(ulog.ErrorLevel)
+		logger, cfn := newUlogJSON(ulog.ErrorLevel)
 		defer cfn()
 
 		b.ResetTimer()
@@ -254,7 +254,7 @@ func BenchmarkDisabledAddingFields(b *testing.B) {
 	}
 
 	b.Run("blugnu/ulog-json", func(b *testing.B) {
-		logger, cfn := newUlogJson(ulog.ErrorLevel)
+		logger, cfn := newUlogJSON(ulog.ErrorLevel)
 		defer cfn()
 
 		b.ResetTimer()
@@ -338,7 +338,7 @@ func BenchmarkWithoutFields(b *testing.B) {
 	}
 
 	b.Run("blugnu/ulog-json", func(b *testing.B) {
-		logger, cfn := newUlogJson(ulog.InfoLevel)
+		logger, cfn := newUlogJSON(ulog.InfoLevel)
 		defer cfn()
 
 		b.ResetTimer()
@@ -423,7 +423,7 @@ func BenchmarkCallsiteOverhead(b *testing.B) {
 	})
 
 	b.Run("blugnu/ulog-with-callsite-json", func(b *testing.B) {
-		logger, cfn := newUlogJson(ulog.InfoLevel, ulog.LogCallsite(true))
+		logger, cfn := newUlogJSON(ulog.InfoLevel, ulog.LogCallsite(true))
 		defer cfn()
 
 		b.ResetTimer()
@@ -494,7 +494,7 @@ func BenchmarkAccumulatedContext(b *testing.B) {
 	}
 
 	b.Run("blugnu/ulog-json", func(b *testing.B) {
-		logger, cfn := newUlogJson(ulog.InfoLevel)
+		logger, cfn := newUlogJSON(ulog.InfoLevel)
 		defer cfn()
 
 		logger = logger.WithFields(fakeUlogFields())
@@ -584,7 +584,7 @@ func BenchmarkAddingFields(b *testing.B) {
 	}
 
 	b.Run("blugnu/ulog-json", func(b *testing.B) {
-		logger, cfn := newUlogJson(ulog.InfoLevel)
+		logger, cfn := newUlogJSON(ulog.InfoLevel)
 		defer cfn()
 
 		b.ResetTimer()

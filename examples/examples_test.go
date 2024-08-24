@@ -88,11 +88,11 @@ func TestDisabled(t *testing.T) {
 	})
 }
 
-func TestJsonFormatter(t *testing.T) {
+func TestJSONFormatter(t *testing.T) {
 	logger, closelog, _ := ulog.NewLogger(
 		context.Background(),
 		ulog.LoggerLevel(ulog.DebugLevel),
-		ulog.LoggerFormat(ulog.NewJSONFormatter()),
+		ulog.LoggerFormat(ulog.JSONFormatter()),
 	)
 	defer closelog()
 

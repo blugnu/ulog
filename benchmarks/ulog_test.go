@@ -27,11 +27,11 @@ import (
 	"github.com/blugnu/ulog"
 )
 
-func newUlogJson(level ulog.Level, opt ...ulog.LoggerOption) (ulog.Logger, ulog.CloseFn) {
+func newUlogJSON(level ulog.Level, opt ...ulog.LoggerOption) (ulog.Logger, ulog.CloseFn) {
 	opt = append(opt,
 		ulog.LoggerLevel(level),
 		ulog.LoggerOutput(io.Discard),
-		ulog.LoggerFormat(ulog.NewJSONFormatter()),
+		ulog.LoggerFormat(ulog.JSONFormatter()),
 	)
 
 	logger, cfn, _ := ulog.NewLogger(context.Background(), opt...)
@@ -70,9 +70,7 @@ func newUlogMux(level ulog.Level) (ulog.Logger, ulog.CloseFn) {
 			ulog.MuxTarget(
 				ulog.TargetLevel(level),
 				ulog.TargetFormat(ulog.LogfmtFormatter()),
-				ulog.TargetTransport(ulog.StdioTransport(
-					ulog.StdioOutput(io.Discard),
-				)),
+				ulog.TargetTransport(ulog.StdioTransport(io.Discard)),
 			),
 		),
 	)

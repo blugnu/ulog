@@ -18,7 +18,7 @@ package ulog
 // Although the label for each field may be configured, the inclusion
 // of these fields in a log entry is fixed and cannot be changed, as is
 // the order of the fields in the output.
-func JSONFieldNames(keys map[FieldId]string) JsonFormatterOption {
+func JSONFieldNames(keys map[FieldId]string) JSONFormatterOption {
 	return func(lf *jsonfmt) error {
 		for k, v := range keys {
 			lf.keys[k] = v
@@ -29,7 +29,7 @@ func JSONFieldNames(keys map[FieldId]string) JsonFormatterOption {
 
 // JSONLevelLabels configures the values used for the Level field
 // in json formatted log entries.
-func JSONLevelLabels(levels map[Level]string) JsonFormatterOption {
+func JSONLevelLabels(levels map[Level]string) JSONFormatterOption {
 	return func(jf *jsonfmt) error {
 		for k, v := range levels {
 			jf.levels[k] = v
