@@ -129,6 +129,25 @@ func TestMsgpackFormatter(t *testing.T) {
 							test.That(t, buf.Bytes()).Equals(packedBytes(0x84, 0xa9, "timestamp", tsb, 0xa5, "level", 0xa4, "info", 0xa7, "message", 0xa5, "entry", 0xa4, "ikey", 123))
 						},
 					},
+					{scenario: "error field",
+						exec: func(t *testing.T) {
+							// ARRANGE
+							e.logcontext = &logcontext{
+								fields: &fields{
+									mutex: mx,
+									m:     map[string]any{"error": errors.New("an error")},
+									b:     map[int][]byte{},
+								},
+							}
+
+							// ACT
+							sut.Format(0, e, buf)
+
+							// ASSERT
+							IsSyncSafe(t, false, mx)
+							test.That(t, buf.String()).Equals(string(packedBytes(0x84, 0xa9, "timestamp", tsb, 0xa5, "level", 0xa4, "info", 0xa7, "message", 0xa5, "entry", 0xa5, "error", 0xa8, "an error")))
+						},
+					},
 					{scenario: "struct field",
 						exec: func(t *testing.T) {
 							// ARRANGE

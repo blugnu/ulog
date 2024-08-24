@@ -108,27 +108,40 @@ func (w *logfmt) Format(id int, e entry, b ByteWriter) {
 	}
 
 	fbb := e.fields.getFormattedBytes(id)
+
+	// if there are no fields, just write a newline and return
 	if fbb == nil {
 		return
 	}
 
+	// we have a cached formatted byte buffer, write it and return
 	if fbb.Len() > 0 {
 		_, _ = b.Write(fbb.Bytes())
 		return
 	}
 
+	// we have fields, but no cached formatted byte buffer, so write the field entries
 	w.writeFields(fbb, e.fields)
 
+	// copy the formatted field entries to a new byte slice and cache it
 	fb := make([]byte, fbb.Len())
 	copy(fb, fbb.Bytes())
-
 	e.fields.setFormattedBytes(id, fb)
 
+	// as well as caching the formatted bytes we also need to write them to the output
 	_, _ = b.Write(fb)
 }
 
 func (w *logfmt) writeFields(buf ByteWriter, f *fields) {
 	for k, v := range f.m {
+		if err, isErr := v.(error); isErr {
+			_ = buf.WriteByte(char.space)
+			_, _ = buf.Write([]byte(k))
+			_ = buf.WriteByte(char.equal)
+			_, _ = buf.Write([]byte(fmt.Sprintf("%q", err)))
+			continue
+		}
+
 		if reflect.ValueOf(v).Kind() == reflect.Struct ||
 			(reflect.ValueOf(v).Kind() == reflect.Ptr && reflect.ValueOf(v).Elem().Kind() == reflect.Struct) {
 			w.writeStruct(buf, k, v)

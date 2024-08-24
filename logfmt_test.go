@@ -424,6 +424,29 @@ func TestLogfmtFormatter(t *testing.T) {
 				IsSyncSafe(t, false, mx)
 			},
 		},
+		{scenario: "error field",
+			exec: func(t *testing.T) {
+				// ACT
+				sut.Format(0, entry{
+					logcontext: &logcontext{
+						fields: &fields{
+							mutex: mx,
+							m: map[string]any{
+								"error": errors.New("an error"),
+							},
+							b: map[int][]byte{},
+						},
+					},
+					Time:    tm,
+					Level:   InfoLevel,
+					Message: "message",
+				}, buf)
+
+				// ASSERT
+				test.That(t, buf.String()).Equals("time=2010-09-08T07:06:05.432100Z level=INFO  message=\"message\" error=\"an error\"")
+				IsSyncSafe(t, false, mx)
+			},
+		},
 		{scenario: "struct field",
 			exec: func(t *testing.T) {
 				// ACT

@@ -100,6 +100,12 @@ func (fmt *msgpackfmt) Format(id int, e entry, b ByteWriter) {
 	_ = enc.Using(fbb, func() error {
 		for k, v := range e.fields.m {
 			_ = enc.EncodeString(k)
+
+			if err, ok := v.(error); ok {
+				_ = enc.EncodeString(err.Error())
+				continue
+			}
+
 			if reflect.ValueOf(v).Kind() == reflect.Struct ||
 				(reflect.ValueOf(v).Kind() == reflect.Ptr && reflect.ValueOf(v).Elem().Kind() == reflect.Struct) {
 				fmt.writeStruct(enc, v)
