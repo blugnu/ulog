@@ -82,6 +82,9 @@ func (f *fields) merge(with map[string]any) *fields {
 
 // getFormattedBytes returns the bytes.Buffer for the specified key or
 // a new *bytes.Buffer if no buffer exists for the key.
+//
+// If the fields struct is nil then nil is returned, indicating that
+// no buffer is available or required.
 func (f *fields) getFormattedBytes(id int) *bytes.Buffer {
 	if f == nil {
 		return nil
@@ -93,7 +96,7 @@ func (f *fields) getFormattedBytes(id int) *bytes.Buffer {
 	if b, ok := f.b[id]; ok {
 		return bytes.NewBuffer(b)
 	}
-	return &bytes.Buffer{}
+	return &bytes.Buffer{} //FUTURE: is it worth using a pool of buffers?
 }
 
 // setFormattedBytes sets the bytes.Buffer for the specified key.
